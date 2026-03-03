@@ -7,13 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { UserPlus, Copy, Check } from "lucide-react";
+import { UserPlus, ExternalLink } from "lucide-react";
 
 const InvitePage: React.FC = () => {
   const { user } = useAuth();
   const [formData, setFormData] = useState({ name: "", email: "", whatsapp: "", profession: "", event_date: "" });
-  const [inviteLink, setInviteLink] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -39,9 +38,17 @@ const InvitePage: React.FC = () => {
       return data;
     },
     onSuccess: (data) => {
-      const link = `${window.location.origin}/rsvp/${data.invite_token}`;
-      setInviteLink(link);
+      setSubmitted(true);
       toast.success("Convite criado!");
+
+      // Build WhatsApp deep link
+      const phone = formData.whatsapp.replace(/\D/g, "");
+      const dateFormatted = formData.event_date
+        ? new Date(formData.event_date + "T12:00:00").toLocaleDateString("pt-BR")
+        : "";
+      const message = `Oii ${formData.name}! Tudo bem? Estou te enviando o convite para participares do Conexões 06:30 na data ${dateFormatted}. Segue o link para acerto https://www.asaas.com/c/3aje7z27hu4dnev6 😁`;
+      const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+      window.open(waUrl, "_blank");
     },
     onError: (e: any) => toast.error(e.message || "Erro ao criar convite"),
   });
@@ -51,64 +58,67 @@ const InvitePage: React.FC = () => {
     createMutation.mutate();
   };
 
-  const handleCopy = () => {
-    if (inviteLink) {
-      navigator.clipboard.writeText(inviteLink);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
+  if (submitted) {
+    return (
+      <div className="space-y-6 max-w-lg">
+        <h1 className="text-2xl font-display font-bold">Convidar Visitante</h1>
+        <Card className="bg-card border-primary border-2">
+          <CardHeader>
+            <CardTitle className="font-display text-lg text-primary">Convite Enviado! 🎉</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              O link do WhatsApp foi aberto automaticamente com a mensagem de convite.
+            </p>
+            <Button
+              variant="outline"
+              className="w-full border-border"
+              onClick={() => {
+                setSubmitted(false);
+                setFormData({ name: "", email: "", whatsapp: "", profession: "", event_date: "" });
+              }}
+            >
+              Criar Outro Convite
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-lg">
       <h1 className="text-2xl font-display font-bold">Convidar Visitante</h1>
 
-      {inviteLink ? (
-        <Card className="bg-card border-primary border-2">
-          <CardHeader><CardTitle className="font-display text-lg text-primary">Convite Criado!</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">Compartilhe o link abaixo com seu visitante:</p>
-            <div className="flex items-center gap-2">
-              <Input value={inviteLink} readOnly className="bg-muted border-border text-sm" />
-              <Button size="icon" variant="outline" onClick={handleCopy} className="shrink-0 border-border">
-                {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
-              </Button>
-            </div>
-            <Button variant="outline" className="w-full border-border" onClick={() => { setInviteLink(null); setFormData({ name: "", email: "", whatsapp: "", profession: "", event_date: "" }); }}>
-              Criar Outro Convite
+      <Card className="bg-card border-border">
+        <CardContent className="p-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {[
+              { key: "name", label: "Nome do visitante", required: true },
+              { key: "email", label: "Email", type: "email" },
+              { key: "whatsapp", label: "WhatsApp (com DDD)", required: true, placeholder: "51999999999" },
+              { key: "profession", label: "Profissão / Empresa" },
+              { key: "event_date", label: "Data do evento", type: "date", required: true },
+            ].map(({ key, label, type, required, placeholder }) => (
+              <div key={key} className="space-y-2">
+                <Label>{label}</Label>
+                <Input
+                  type={type || "text"}
+                  value={(formData as any)[key]}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, [key]: e.target.value }))}
+                  className="bg-muted border-border min-h-[48px]"
+                  required={required}
+                  placeholder={placeholder}
+                />
+              </div>
+            ))}
+            <Button type="submit" className="w-full font-bold uppercase tracking-wider min-h-[48px]" disabled={createMutation.isPending}>
+              <UserPlus className="h-4 w-4 mr-2" />
+              {createMutation.isPending ? "Criando..." : "Criar Convite"}
             </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card className="bg-card border-border">
-          <CardContent className="p-6">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {[
-                { key: "name", label: "Nome do visitante", required: true },
-                { key: "email", label: "Email", type: "email" },
-                { key: "whatsapp", label: "WhatsApp" },
-                { key: "profession", label: "Profissão" },
-                { key: "event_date", label: "Data do evento", type: "date", required: true },
-              ].map(({ key, label, type, required }) => (
-                <div key={key} className="space-y-2">
-                  <Label>{label}</Label>
-                  <Input
-                    type={type || "text"}
-                    value={(formData as any)[key]}
-                    onChange={(e) => setFormData(prev => ({ ...prev, [key]: e.target.value }))}
-                    className="bg-muted border-border"
-                    required={required}
-                  />
-                </div>
-              ))}
-              <Button type="submit" className="w-full font-bold uppercase tracking-wider" disabled={createMutation.isPending}>
-                <UserPlus className="h-4 w-4 mr-2" />
-                {createMutation.isPending ? "Criando..." : "Criar Convite"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      )}
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 };

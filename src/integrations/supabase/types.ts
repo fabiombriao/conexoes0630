@@ -14,6 +14,77 @@ export type Database = {
   }
   public: {
     Tables: {
+      attendance_records: {
+        Row: {
+          id: string
+          member_id: string
+          session_id: string
+          status: Database["public"]["Enums"]["attendance_record_status"]
+          substitute_name: string | null
+        }
+        Insert: {
+          id?: string
+          member_id: string
+          session_id: string
+          status: Database["public"]["Enums"]["attendance_record_status"]
+          substitute_name?: string | null
+        }
+        Update: {
+          id?: string
+          member_id?: string
+          session_id?: string
+          status?: Database["public"]["Enums"]["attendance_record_status"]
+          substitute_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_records_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "attendance_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      attendance_sessions: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          created_by: string
+          group_id: string
+          id: string
+          is_test: boolean
+          rejection_reason: string | null
+          session_date: string
+          status: Database["public"]["Enums"]["attendance_session_status"]
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by: string
+          group_id: string
+          id?: string
+          is_test?: boolean
+          rejection_reason?: string | null
+          session_date: string
+          status?: Database["public"]["Enums"]["attendance_session_status"]
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string
+          group_id?: string
+          id?: string
+          is_test?: boolean
+          rejection_reason?: string | null
+          session_date?: string
+          status?: Database["public"]["Enums"]["attendance_session_status"]
+        }
+        Relationships: []
+      }
       contributions: {
         Row: {
           attendance_status:
@@ -362,6 +433,57 @@ export type Database = {
         }
         Relationships: []
       }
+      monthly_rankings: {
+        Row: {
+          created_at: string
+          deal_points: number
+          group_id: string
+          id: string
+          indication_points: number
+          is_archived: boolean
+          is_locked: boolean
+          member_id: string
+          month: string
+          position: number | null
+          presence_points: number
+          total_points: number
+          tt_points: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deal_points?: number
+          group_id: string
+          id?: string
+          indication_points?: number
+          is_archived?: boolean
+          is_locked?: boolean
+          member_id: string
+          month: string
+          position?: number | null
+          presence_points?: number
+          total_points?: number
+          tt_points?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deal_points?: number
+          group_id?: string
+          id?: string
+          indication_points?: number
+          is_archived?: boolean
+          is_locked?: boolean
+          member_id?: string
+          month?: string
+          position?: number | null
+          presence_points?: number
+          total_points?: number
+          tt_points?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -397,6 +519,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          admin_permissions: Json | null
           avatar_url: string | null
           bio: string | null
           business_category: string | null
@@ -414,6 +537,7 @@ export type Database = {
           linkedin_url: string | null
           professional_title: string | null
           profile_completed: boolean | null
+          status: string
           updated_at: string
           vcr_score: number | null
           video_url: string | null
@@ -421,6 +545,7 @@ export type Database = {
           whatsapp: string | null
         }
         Insert: {
+          admin_permissions?: Json | null
           avatar_url?: string | null
           bio?: string | null
           business_category?: string | null
@@ -438,6 +563,7 @@ export type Database = {
           linkedin_url?: string | null
           professional_title?: string | null
           profile_completed?: boolean | null
+          status?: string
           updated_at?: string
           vcr_score?: number | null
           video_url?: string | null
@@ -445,6 +571,7 @@ export type Database = {
           whatsapp?: string | null
         }
         Update: {
+          admin_permissions?: Json | null
           avatar_url?: string | null
           bio?: string | null
           business_category?: string | null
@@ -462,6 +589,7 @@ export type Database = {
           linkedin_url?: string | null
           professional_title?: string | null
           profile_completed?: boolean | null
+          status?: string
           updated_at?: string
           vcr_score?: number | null
           video_url?: string | null
@@ -501,6 +629,7 @@ export type Database = {
           visitor_name: string
           visitor_profession: string | null
           visitor_whatsapp: string | null
+          whatsapp_opened_at: string | null
         }
         Insert: {
           created_at?: string
@@ -514,6 +643,7 @@ export type Database = {
           visitor_name: string
           visitor_profession?: string | null
           visitor_whatsapp?: string | null
+          whatsapp_opened_at?: string | null
         }
         Update: {
           created_at?: string
@@ -527,6 +657,7 @@ export type Database = {
           visitor_name?: string
           visitor_profession?: string | null
           visitor_whatsapp?: string | null
+          whatsapp_opened_at?: string | null
         }
         Relationships: [
           {
@@ -554,6 +685,12 @@ export type Database = {
     }
     Enums: {
       app_role: "member" | "group_leader" | "admin"
+      attendance_record_status: "present" | "absent" | "substituted"
+      attendance_session_status:
+        | "test"
+        | "pending_approval"
+        | "approved"
+        | "rejected"
       attendance_status: "present" | "absent" | "substituted"
       contribution_type:
         | "referral"
@@ -706,6 +843,13 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["member", "group_leader", "admin"],
+      attendance_record_status: ["present", "absent", "substituted"],
+      attendance_session_status: [
+        "test",
+        "pending_approval",
+        "approved",
+        "rejected",
+      ],
       attendance_status: ["present", "absent", "substituted"],
       contribution_type: ["referral", "onf", "one_to_one", "ueg", "attendance"],
       event_type: [
