@@ -45,7 +45,10 @@ function normalizePerms(raw: Record<string, unknown> | null): AdminPermissions {
 export function usePermissions() {
   const { user } = useAuth();
 
-  const { data: profile } = useQuery({
+  const {
+    data: profile,
+    isLoading: isProfileLoading,
+  } = useQuery({
     queryKey: ["profile-permissions", user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -59,7 +62,10 @@ export function usePermissions() {
     enabled: !!user,
   });
 
-  const { data: roles } = useQuery({
+  const {
+    data: roles,
+    isLoading: isRolesLoading,
+  } = useQuery({
     queryKey: ["user-roles", user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -87,6 +93,7 @@ export function usePermissions() {
     profile?.admin_permissions as Record<string, unknown> | null
   );
 
+  const isPermissionsLoading = !!user && (isProfileLoading || isRolesLoading);
   const accountStatus = profile?.status ?? "pending";
   const isActive = accountStatus === "active";
 
@@ -101,6 +108,7 @@ export function usePermissions() {
     isSuperAdmin,
     isAdmin: isGroupLeader,
     isMember,
+    isPermissionsLoading,
     isActive,
     accountStatus,
     can,
