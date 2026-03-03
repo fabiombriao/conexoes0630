@@ -1,1 +1,4 @@
 project_id = "kewqrcbmmfofcsunablb"
+
+[functions.monthly-ranking-manager]
+verify_jwt = false
