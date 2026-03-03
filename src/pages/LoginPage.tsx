@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,8 +14,28 @@ const LoginPage: React.FC = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [forgotMode, setForgotMode] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      toast.success("E-mail de redefinição enviado! Verifique sua caixa de entrada.");
+      setForgotMode(false);
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao enviar e-mail de redefinição.");
+    } finally {
+      setForgotLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,7 +95,18 @@ const LoginPage: React.FC = () => {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">Senha</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">Senha</Label>
+              {!isSignUp && (
+                <button
+                  type="button"
+                  onClick={() => { setForgotMode(true); setForgotEmail(email); }}
+                  className="text-xs text-primary hover:underline"
+                >
+                  Esqueci minha senha
+                </button>
+              )}
+            </div>
             <Input
               id="password"
               type="password"
@@ -105,6 +137,36 @@ const LoginPage: React.FC = () => {
             {isSignUp ? "Entrar" : "Criar conta"}
           </button>
         </p>
+
+        {/* Forgot Password Modal */}
+        {forgotMode && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+            <div className="w-full max-w-sm rounded-xl bg-card border border-border p-6 space-y-4">
+              <h2 className="text-lg font-bold text-foreground">Redefinir Senha</h2>
+              <p className="text-sm text-muted-foreground">
+                Informe seu e-mail para receber o link de redefinição.
+              </p>
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <Input
+                  type="email"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  placeholder="seu@email.com"
+                  required
+                  className="bg-background border-border min-h-[48px]"
+                />
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" onClick={() => setForgotMode(false)} className="flex-1">
+                    Cancelar
+                  </Button>
+                  <Button type="submit" disabled={forgotLoading} className="flex-1">
+                    {forgotLoading ? "Enviando..." : "Enviar"}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
