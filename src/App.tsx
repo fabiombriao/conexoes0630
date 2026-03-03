@@ -21,6 +21,7 @@ import AdminInvitationsPage from "@/pages/AdminInvitationsPage";
 import NotificationsPage from "@/pages/NotificationsPage";
 import ProfilePage from "@/pages/ProfilePage";
 import RSVPPage from "@/pages/RSVPPage";
+import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/pending" element={<PendingApprovalPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/rsvp/:token" element={<RSVPPage />} />
             <Route
               element={
