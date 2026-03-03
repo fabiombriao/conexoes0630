@@ -49,6 +49,7 @@ export function AppSidebar() {
     { title: "Relatórios", url: "/reports", icon: BarChart3, show: isSuperAdmin || can("view_reports") },
     { title: "Presença", url: "/attendance", icon: ClipboardList, show: isSuperAdmin || can("attendance_control") },
     { title: "Indicações Realizadas", url: "/admin/invitations", icon: FileText, show: isSuperAdmin || can("view_visitor_invitations") },
+    { title: "Gerenciar Admins", url: "/admin/manage", icon: ShieldCheck, show: isSuperAdmin },
     { title: "Solicitações Pendentes", url: "/admin/pending", icon: ShieldCheck, show: isSuperAdmin },
     { title: "Notificações", url: "/notifications", icon: Bell, show: true },
     { title: "Meu Perfil", url: "/profile", icon: User, show: true },

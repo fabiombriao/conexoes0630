@@ -16,6 +16,7 @@ import InvitePage from "@/pages/InvitePage";
 import RankingPage from "@/pages/RankingPage";
 import AttendancePage from "@/pages/AttendancePage";
 import AdminPendingPage from "@/pages/AdminPendingPage";
+import ManageAdminsPage from "@/pages/ManageAdminsPage";
 import NotificationsPage from "@/pages/NotificationsPage";
 import ProfilePage from "@/pages/ProfilePage";
 import RSVPPage from "@/pages/RSVPPage";
@@ -49,6 +50,7 @@ const App = () => (
               <Route path="/ranking" element={<RankingPage />} />
               <Route path="/attendance" element={<AttendancePage />} />
               <Route path="/admin/pending" element={<AdminPendingPage />} />
+              <Route path="/admin/manage" element={<ManageAdminsPage />} />
               <Route path="/admin/invitations" element={<InvitePage />} />
               <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/profile" element={<ProfilePage />} />

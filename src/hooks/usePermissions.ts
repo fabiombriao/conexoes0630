@@ -9,9 +9,38 @@ export interface AdminPermissions {
   manage_profiles?: boolean;
   send_announcements?: boolean;
   view_visitor_invitations?: boolean;
+  // New JSON keys (used by ManageAdminsPage)
+  canControlAttendance?: boolean;
+  canCreateEvents?: boolean;
+  canViewReports?: boolean;
+  canManageProfiles?: boolean;
+  canSendAnnouncements?: boolean;
+  canViewInvitations?: boolean;
 }
 
 export type UserRole = "superadmin" | "admin" | "member";
+
+// Map new-style JSON keys to old-style permission names
+const KEY_MAP: Record<string, keyof AdminPermissions> = {
+  canControlAttendance: "attendance_control",
+  canCreateEvents: "create_events",
+  canViewReports: "view_reports",
+  canManageProfiles: "manage_profiles",
+  canSendAnnouncements: "send_announcements",
+  canViewInvitations: "view_visitor_invitations",
+};
+
+function normalizePerms(raw: Record<string, unknown> | null): AdminPermissions {
+  if (!raw) return {};
+  const result: AdminPermissions = { ...raw } as AdminPermissions;
+  // Merge new-style keys into old-style so `can()` works uniformly
+  for (const [newKey, oldKey] of Object.entries(KEY_MAP)) {
+    if (raw[newKey] === true) {
+      (result as Record<string, unknown>)[oldKey] = true;
+    }
+  }
+  return result;
+}
 
 export function usePermissions() {
   const { user } = useAuth();
@@ -54,8 +83,9 @@ export function usePermissions() {
     ? "admin"
     : "member";
 
-  const adminPerms: AdminPermissions =
-    (profile?.admin_permissions as AdminPermissions) ?? {};
+  const adminPerms: AdminPermissions = normalizePerms(
+    profile?.admin_permissions as Record<string, unknown> | null
+  );
 
   const accountStatus = profile?.status ?? "pending";
   const isActive = accountStatus === "active";
