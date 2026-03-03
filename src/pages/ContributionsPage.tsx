@@ -21,12 +21,14 @@ import type { Database } from "@/integrations/supabase/types";
 type ContributionType = Database["public"]["Enums"]["contribution_type"];
 
 const TYPE_LABELS: Record<ContributionType, string> = {
-  referral: "Referência",
-  onf: "ONF",
-  one_to_one: "Um-a-Um",
-  ueg: "UEG",
-  attendance: "Presença",
+  attendance: "R — Reuniões",
+  referral: "I — Indicações",
+  one_to_one: "T — Tête-à-tête",
+  onf: "M — Metas Fechadas",
+  ueg: "O — Oportunidades",
 };
+
+const RITMO_ORDER: ContributionType[] = ["attendance", "referral", "one_to_one", "onf", "ueg"];
 
 const UEG_POINTS: Record<string, number> = {
   article: 1, podcast: 1, book: 3, msp_training: 2, event: 2, video: 1,
@@ -136,7 +138,7 @@ const ContributionsPage: React.FC = () => {
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-display font-bold">Contribuições PALMS</h1>
+        <h1 className="text-2xl font-display font-bold">Contribuições RITMO</h1>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button className="font-bold uppercase tracking-wider">
@@ -151,7 +153,7 @@ const ContributionsPage: React.FC = () => {
 
             {!selectedType ? (
               <div className="grid grid-cols-1 gap-2">
-                {(Object.keys(TYPE_LABELS) as ContributionType[]).map((type) => (
+                {RITMO_ORDER.map((type) => (
                   <Button
                     key={type}
                     variant="outline"
