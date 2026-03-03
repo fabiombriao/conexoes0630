@@ -67,12 +67,18 @@ export default function ManageAdminsPage() {
   const { isSuperAdmin } = usePermissions();
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
+  const [createSuperOpen, setCreateSuperOpen] = useState(false);
   const [editAdmin, setEditAdmin] = useState<AdminRow | null>(null);
 
-  // Form state for create
+  // Form state for create admin
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
+
+  // Form state for create superadmin
+  const [superName, setSuperName] = useState("");
+  const [superEmail, setSuperEmail] = useState("");
+  const [superPassword, setSuperPassword] = useState("");
   const [newPerms, setNewPerms] = useState<AdminPermissionsData>({ ...DEFAULT_PERMS });
 
   // Form state for edit
@@ -100,10 +106,31 @@ export default function ManageAdminsPage() {
     enabled: isSuperAdmin,
   });
 
-  // Create admin via edge function (needs service role to create user)
+  // Fetch superadmins: users with admin role (excluding self)
+  const { data: superAdmins = [], isLoading: isLoadingSuperAdmins } = useQuery({
+    queryKey: ["superadmin-users"],
+    queryFn: async () => {
+      const { data: roles, error: rolesErr } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "admin");
+      if (rolesErr) throw rolesErr;
+      if (!roles?.length) return [];
+
+      const ids = roles.map((r) => r.user_id);
+      const { data: profiles, error: profErr } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", ids);
+      if (profErr) throw profErr;
+      return (profiles ?? []) as unknown as AdminRow[];
+    },
+    enabled: isSuperAdmin,
+  });
+
+  // Create admin (group_leader)
   const createAdminMutation = useMutation({
     mutationFn: async () => {
-      // 1. Sign up the user via supabase auth admin (we use an edge function)
       const { data: authData, error: authErr } = await supabase.auth.signUp({
         email: newEmail,
         password: newPassword,
@@ -113,27 +140,54 @@ export default function ManageAdminsPage() {
       const userId = authData.user?.id;
       if (!userId) throw new Error("Falha ao criar usuário");
 
-      // 2. Update profile status to active + set permissions
       const { error: profErr } = await supabase
         .from("profiles")
-        .update({
-          status: "active",
-          full_name: newName,
-          admin_permissions: newPerms as unknown as null,
-        })
+        .update({ status: "active", full_name: newName, admin_permissions: newPerms as unknown as null })
         .eq("id", userId);
       if (profErr) throw profErr;
 
-      // 3. Add group_leader role
       const { error: roleErr } = await supabase
         .from("user_roles")
-        .insert({ user_id: userId, role: "group_leader" });
+        .update({ role: "group_leader" })
+        .eq("user_id", userId);
       if (roleErr) throw roleErr;
     },
     onSuccess: () => {
       toast.success("Admin criado com sucesso!");
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
       resetCreateForm();
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  // Create superadmin
+  const createSuperAdminMutation = useMutation({
+    mutationFn: async () => {
+      const { data: authData, error: authErr } = await supabase.auth.signUp({
+        email: superEmail,
+        password: superPassword,
+        options: { data: { full_name: superName } },
+      });
+      if (authErr) throw authErr;
+      const userId = authData.user?.id;
+      if (!userId) throw new Error("Falha ao criar usuário");
+
+      const { error: profErr } = await supabase
+        .from("profiles")
+        .update({ status: "active", full_name: superName })
+        .eq("id", userId);
+      if (profErr) throw profErr;
+
+      const { error: roleErr } = await supabase
+        .from("user_roles")
+        .update({ role: "admin" })
+        .eq("user_id", userId);
+      if (roleErr) throw roleErr;
+    },
+    onSuccess: () => {
+      toast.success("Super Admin criado com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["superadmin-users"] });
+      resetSuperForm();
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -157,14 +211,12 @@ export default function ManageAdminsPage() {
 
   const removeAdminMutation = useMutation({
     mutationFn: async (userId: string) => {
-      // Change role from group_leader to member
       const { error } = await supabase
         .from("user_roles")
         .update({ role: "member" })
         .eq("user_id", userId)
         .eq("role", "group_leader");
       if (error) throw error;
-      // Clear admin_permissions
       const { error: profErr } = await supabase
         .from("profiles")
         .update({ admin_permissions: null })
@@ -187,6 +239,13 @@ export default function ManageAdminsPage() {
     setNewPerms({ ...DEFAULT_PERMS });
   };
 
+  const resetSuperForm = () => {
+    setCreateSuperOpen(false);
+    setSuperName("");
+    setSuperEmail("");
+    setSuperPassword("");
+  };
+
   const openEdit = (admin: AdminRow) => {
     setEditAdmin(admin);
     setEditPerms({ ...DEFAULT_PERMS, ...(admin.admin_permissions ?? {}) });
@@ -204,11 +263,36 @@ export default function ManageAdminsPage() {
           <ShieldCheck className="h-7 w-7 text-primary" />
           <h1 className="text-2xl font-display font-bold text-foreground">Gerenciar Admins</h1>
         </div>
-        <Button onClick={() => setCreateOpen(true)} className="gap-2">
-          <Plus className="h-4 w-4" /> Criar Admin
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => setCreateOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" /> Criar Admin
+          </Button>
+          <Button onClick={() => setCreateSuperOpen(true)} variant="outline" className="gap-2 border-primary text-primary hover:bg-primary/10">
+            <Plus className="h-4 w-4" /> Criar Super Admin
+          </Button>
+        </div>
       </div>
 
+      {/* Super Admins Section */}
+      {superAdmins.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold text-foreground">Super Admins</h2>
+          <div className="grid gap-3">
+            {superAdmins.map((sa) => (
+              <div key={sa.id} className="flex items-center justify-between rounded-xl border border-primary/30 bg-primary/5 p-4">
+                <div className="space-y-1">
+                  <p className="font-semibold text-foreground">{sa.full_name || "Sem nome"}</p>
+                  <Badge className="bg-primary/20 text-primary border-primary/30 text-xs">Super Admin</Badge>
+                </div>
+                <ShieldCheck className="h-5 w-5 text-primary" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Admins Section */}
+      <h2 className="text-lg font-semibold text-foreground">Admins</h2>
       {isLoading ? (
         <div className="flex justify-center py-12">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -333,6 +417,43 @@ export default function ManageAdminsPage() {
             >
               <Trash2 className="h-4 w-4 mr-2" />
               {removeAdminMutation.isPending ? "Removendo..." : "Remover Admin"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Super Admin Dialog */}
+      <Dialog open={createSuperOpen} onOpenChange={(open) => { if (!open) resetSuperForm(); else setCreateSuperOpen(true); }}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Criar Super Admin</DialogTitle>
+            <DialogDescription>Cadastre um novo Super Admin com acesso total ao sistema.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nome completo</Label>
+              <Input value={superName} onChange={(e) => setSuperName(e.target.value)} placeholder="Nome do super admin" />
+            </div>
+            <div className="space-y-2">
+              <Label>E-mail</Label>
+              <Input type="email" value={superEmail} onChange={(e) => setSuperEmail(e.target.value)} placeholder="superadmin@email.com" />
+            </div>
+            <div className="space-y-2">
+              <Label>Senha temporária</Label>
+              <Input type="password" value={superPassword} onChange={(e) => setSuperPassword(e.target.value)} placeholder="••••••••" />
+            </div>
+            <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+              <p className="text-sm font-medium text-primary">⚡ Acesso Total</p>
+              <p className="text-xs text-muted-foreground mt-1">Super Admins têm acesso irrestrito a todas as funcionalidades do sistema.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => createSuperAdminMutation.mutate()}
+              disabled={!superName || !superEmail || !superPassword || createSuperAdminMutation.isPending}
+              className="w-full"
+            >
+              {createSuperAdminMutation.isPending ? "Criando..." : "Criar Super Admin"}
             </Button>
           </DialogFooter>
         </DialogContent>
