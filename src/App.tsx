@@ -6,13 +6,16 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AppLayout from "@/components/AppLayout";
 import LoginPage from "@/pages/LoginPage";
+import PendingApprovalPage from "@/pages/PendingApprovalPage";
 import Dashboard from "@/pages/Dashboard";
 import ContributionsPage from "@/pages/ContributionsPage";
 import ReportsPage from "@/pages/ReportsPage";
-import GroupPage from "@/pages/GroupPage";
+import MembersPage from "@/pages/MembersPage";
 import EventsPage from "@/pages/EventsPage";
 import InvitePage from "@/pages/InvitePage";
-import ForumPage from "@/pages/ForumPage";
+import RankingPage from "@/pages/RankingPage";
+import AttendancePage from "@/pages/AttendancePage";
+import AdminPendingPage from "@/pages/AdminPendingPage";
 import NotificationsPage from "@/pages/NotificationsPage";
 import ProfilePage from "@/pages/ProfilePage";
 import RSVPPage from "@/pages/RSVPPage";
@@ -28,6 +31,7 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/pending" element={<PendingApprovalPage />} />
             <Route path="/rsvp/:token" element={<RSVPPage />} />
             <Route
               element={
@@ -39,10 +43,13 @@ const App = () => (
               <Route path="/" element={<Dashboard />} />
               <Route path="/contributions" element={<ContributionsPage />} />
               <Route path="/reports" element={<ReportsPage />} />
-              <Route path="/group" element={<GroupPage />} />
+              <Route path="/members" element={<MembersPage />} />
               <Route path="/events" element={<EventsPage />} />
               <Route path="/invite" element={<InvitePage />} />
-              <Route path="/forum" element={<ForumPage />} />
+              <Route path="/ranking" element={<RankingPage />} />
+              <Route path="/attendance" element={<AttendancePage />} />
+              <Route path="/admin/pending" element={<AdminPendingPage />} />
+              <Route path="/admin/invitations" element={<InvitePage />} />
               <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/profile" element={<ProfilePage />} />
             </Route>

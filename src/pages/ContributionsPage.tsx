@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -18,21 +18,23 @@ import { toast } from "sonner";
 import { Plus, Flame, Sun, Snowflake } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
-type ContributionType = Database["public"]["Enums"]["contribution_type"];
+type ContributionType = "one_to_one" | "referral" | "onf";
 
 const TYPE_LABELS: Record<ContributionType, string> = {
-  attendance: "R — Reuniões",
+  one_to_one: "T — Téte a téte",
   referral: "I — Indicações",
-  one_to_one: "T — Tête-à-tête",
-  onf: "M — Metas Fechadas",
-  ueg: "O — Oportunidades",
+  onf: "M — Negócios Fechados",
 };
 
-const RITMO_ORDER: ContributionType[] = ["attendance", "referral", "one_to_one", "onf", "ueg"];
+const TIM_ORDER: ContributionType[] = ["one_to_one", "referral", "onf"];
 
-const UEG_POINTS: Record<string, number> = {
-  article: 1, podcast: 1, book: 3, msp_training: 2, event: 2, video: 1,
+const TIM_POINTS: Record<ContributionType, number> = {
+  one_to_one: 2,
+  referral: 1,
+  onf: 3,
 };
+
+const TOPICS = ["Apresentação", "GAINS", "Oportunidades", "Estratégia", "Suporte"];
 
 const ContributionsPage: React.FC = () => {
   const { user } = useAuth();
@@ -40,6 +42,7 @@ const ContributionsPage: React.FC = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedType, setSelectedType] = useState<ContributionType | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
+  const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
 
   const { data: contributions, isLoading } = useQuery({
     queryKey: ["contributions", user?.id],
@@ -48,6 +51,7 @@ const ContributionsPage: React.FC = () => {
         .from("contributions")
         .select("*")
         .eq("user_id", user!.id)
+        .in("type", ["one_to_one", "referral", "onf"])
         .order("contribution_date", { ascending: false });
       if (error) throw error;
       return data;
@@ -69,6 +73,19 @@ const ContributionsPage: React.FC = () => {
     enabled: !!user,
   });
 
+  const { data: groupMembers } = useQuery({
+    queryKey: ["group-members-select", groupMembership?.group_id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("group_members")
+        .select("user_id, profiles(full_name, avatar_url)")
+        .eq("group_id", groupMembership!.group_id);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!groupMembership?.group_id,
+  });
+
   const createMutation = useMutation({
     mutationFn: async (data: Record<string, any>) => {
       const { error } = await supabase.from("contributions").insert({
@@ -77,7 +94,6 @@ const ContributionsPage: React.FC = () => {
         type: selectedType!,
         contribution_date: data.contribution_date || new Date().toISOString().split("T")[0],
         notes: data.notes,
-        // Referral
         contact_name: data.contact_name,
         contact_phone: data.contact_phone,
         contact_email: data.contact_email,
@@ -85,23 +101,14 @@ const ContributionsPage: React.FC = () => {
         temperature: data.temperature,
         referral_action: data.referral_action,
         referral_description: data.referral_description,
-        // ONF
+        referred_to: data.referred_to,
         business_value: data.business_value ? parseFloat(data.business_value) : null,
         is_repeat_business: data.is_repeat_business === "true",
         closing_date: data.closing_date,
-        // 1-2-1
         meeting_location: data.meeting_location,
-        meeting_topics: data.meeting_topics?.split(",").map((t: string) => t.trim()),
-        // UEG
-        ueg_type: data.ueg_type,
-        ueg_title: data.ueg_title,
-        ueg_url: data.ueg_url,
-        ueg_points: data.ueg_type ? UEG_POINTS[data.ueg_type] || 1 : null,
-        completion_date: data.completion_date,
-        // Attendance
+        meeting_topics: selectedTopics.length > 0 ? selectedTopics : null,
+        meeting_member_id: data.meeting_member_id,
         meeting_date: data.meeting_date,
-        attendance_status: data.attendance_status,
-        substitute_name: data.substitute_name,
       });
       if (error) throw error;
     },
@@ -111,6 +118,7 @@ const ContributionsPage: React.FC = () => {
       setDialogOpen(false);
       setSelectedType(null);
       setFormData({});
+      setSelectedTopics([]);
       toast.success("Contribuição registrada!");
     },
     onError: (e: any) => toast.error(e.message || "Erro ao registrar"),
@@ -118,6 +126,12 @@ const ContributionsPage: React.FC = () => {
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const toggleTopic = (topic: string) => {
+    setSelectedTopics((prev) =>
+      prev.includes(topic) ? prev.filter((t) => t !== topic) : [...prev, topic]
+    );
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -138,8 +152,8 @@ const ContributionsPage: React.FC = () => {
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-display font-bold">Contribuições RITMO</h1>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <h1 className="text-2xl font-display font-bold">Minhas Contribuições TIM</h1>
+        <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) { setSelectedType(null); setFormData({}); setSelectedTopics([]); } }}>
           <DialogTrigger asChild>
             <Button className="font-bold uppercase tracking-wider">
               <Plus className="h-4 w-4 mr-2" />
@@ -148,43 +162,115 @@ const ContributionsPage: React.FC = () => {
           </DialogTrigger>
           <DialogContent className="bg-popover border-border max-h-[90vh] overflow-y-auto sm:max-w-lg">
             <DialogHeader>
-              <DialogTitle className="font-display">Nova Contribuição</DialogTitle>
+              <DialogTitle className="font-display">Nova Contribuição TIM</DialogTitle>
             </DialogHeader>
 
             {!selectedType ? (
               <div className="grid grid-cols-1 gap-2">
-                {RITMO_ORDER.map((type) => (
+                {TIM_ORDER.map((type) => (
                   <Button
                     key={type}
                     variant="outline"
-                    className="justify-start border-border hover:bg-primary hover:text-primary-foreground"
+                    className="justify-start border-border hover:bg-primary hover:text-primary-foreground text-left"
                     onClick={() => setSelectedType(type)}
                   >
-                    {TYPE_LABELS[type]}
+                    <span className="flex-1">{TYPE_LABELS[type]}</span>
+                    <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full ml-2">
+                      {TIM_POINTS[type]} pts
+                    </span>
                   </Button>
                 ))}
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
-                <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedType(null)}>
+                <Button type="button" variant="ghost" size="sm" onClick={() => { setSelectedType(null); setFormData({}); setSelectedTopics([]); }}>
                   ← Voltar
                 </Button>
-                <p className="text-sm text-primary font-bold uppercase">{TYPE_LABELS[selectedType]}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-primary font-bold uppercase">{TYPE_LABELS[selectedType]}</p>
+                  <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
+                    {TIM_POINTS[selectedType]} pts
+                  </span>
+                </div>
+
+                {selectedType === "one_to_one" && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Membro do encontro</Label>
+                      <select
+                        value={formData.meeting_member_id || ""}
+                        onChange={(e) => handleChange("meeting_member_id", e.target.value)}
+                        className="flex h-10 w-full rounded-md border border-border bg-muted px-3 py-2 text-sm"
+                        required
+                      >
+                        <option value="">Selecione...</option>
+                        {groupMembers?.filter((m: any) => m.user_id !== user?.id).map((m: any) => (
+                          <option key={m.user_id} value={m.user_id}>
+                            {m.profiles?.full_name || "Membro"}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label>Data</Label>
+                        <Input type="date" value={formData.contribution_date || ""} onChange={(e) => handleChange("contribution_date", e.target.value)} className="bg-muted border-border min-h-[48px]" required />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Local</Label>
+                        <Input value={formData.meeting_location || ""} onChange={(e) => handleChange("meeting_location", e.target.value)} className="bg-muted border-border min-h-[48px]" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Tópicos</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {TOPICS.map((t) => (
+                          <Button
+                            key={t}
+                            type="button"
+                            size="sm"
+                            variant={selectedTopics.includes(t) ? "default" : "outline"}
+                            className="border-border"
+                            onClick={() => toggleTopic(t)}
+                          >
+                            {t}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 {selectedType === "referral" && (
                   <>
                     <div className="space-y-2">
+                      <Label>Indicado para</Label>
+                      <select
+                        value={formData.referred_to || ""}
+                        onChange={(e) => handleChange("referred_to", e.target.value)}
+                        className="flex h-10 w-full rounded-md border border-border bg-muted px-3 py-2 text-sm"
+                        required
+                      >
+                        <option value="">Selecione o membro...</option>
+                        {groupMembers?.filter((m: any) => m.user_id !== user?.id).map((m: any) => (
+                          <option key={m.user_id} value={m.user_id}>
+                            {m.profiles?.full_name || "Membro"}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
                       <Label>Nome do contato</Label>
-                      <Input value={formData.contact_name || ""} onChange={(e) => handleChange("contact_name", e.target.value)} className="bg-muted border-border" required />
+                      <Input value={formData.contact_name || ""} onChange={(e) => handleChange("contact_name", e.target.value)} className="bg-muted border-border min-h-[48px]" required />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-2">
                         <Label>Telefone</Label>
-                        <Input value={formData.contact_phone || ""} onChange={(e) => handleChange("contact_phone", e.target.value)} className="bg-muted border-border" />
+                        <Input value={formData.contact_phone || ""} onChange={(e) => handleChange("contact_phone", e.target.value)} className="bg-muted border-border min-h-[48px]" />
                       </div>
                       <div className="space-y-2">
                         <Label>Email</Label>
-                        <Input value={formData.contact_email || ""} onChange={(e) => handleChange("contact_email", e.target.value)} className="bg-muted border-border" />
+                        <Input value={formData.contact_email || ""} onChange={(e) => handleChange("contact_email", e.target.value)} className="bg-muted border-border min-h-[48px]" />
                       </div>
                     </div>
                     <div className="space-y-2">
@@ -192,17 +278,10 @@ const ContributionsPage: React.FC = () => {
                       <div className="flex gap-2">
                         {[
                           { val: "hot", label: "Quente 🔥" },
-                          { val: "warm", label: "Morna 🌤" },
-                          { val: "cold", label: "Fria ❄️" },
+                          { val: "warm", label: "Morno 🌤" },
+                          { val: "cold", label: "Frio ❄️" },
                         ].map((t) => (
-                          <Button
-                            key={t.val}
-                            type="button"
-                            variant={formData.temperature === t.val ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => handleChange("temperature", t.val)}
-                            className="border-border"
-                          >
+                          <Button key={t.val} type="button" variant={formData.temperature === t.val ? "default" : "outline"} size="sm" onClick={() => handleChange("temperature", t.val)} className="border-border">
                             {t.label}
                           </Button>
                         ))}
@@ -212,6 +291,25 @@ const ContributionsPage: React.FC = () => {
                       <Label>Descrição</Label>
                       <Textarea value={formData.referral_description || ""} onChange={(e) => handleChange("referral_description", e.target.value)} className="bg-muted border-border" rows={3} />
                     </div>
+                    <div className="space-y-2">
+                      <Label>Ação tomada</Label>
+                      <div className="flex gap-2 flex-wrap">
+                        {[
+                          { val: "called", label: "Ligou" },
+                          { val: "scheduled", label: "Agendou" },
+                          { val: "email", label: "E-mail" },
+                          { val: "in_person", label: "Pessoalmente" },
+                        ].map((a) => (
+                          <Button key={a.val} type="button" variant={formData.referral_action === a.val ? "default" : "outline"} size="sm" onClick={() => handleChange("referral_action", a.val)} className="border-border">
+                            {a.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Data</Label>
+                      <Input type="date" value={formData.contribution_date || ""} onChange={(e) => handleChange("contribution_date", e.target.value)} className="bg-muted border-border min-h-[48px]" />
+                    </div>
                   </>
                 )}
 
@@ -219,14 +317,14 @@ const ContributionsPage: React.FC = () => {
                   <>
                     <div className="space-y-2">
                       <Label>Valor do negócio (R$)</Label>
-                      <Input type="number" step="0.01" value={formData.business_value || ""} onChange={(e) => handleChange("business_value", e.target.value)} className="bg-muted border-border" required />
+                      <Input type="number" step="0.01" value={formData.business_value || ""} onChange={(e) => handleChange("business_value", e.target.value)} className="bg-muted border-border min-h-[48px] text-2xl font-display font-bold text-primary" required />
                     </div>
                     <div className="space-y-2">
                       <Label>Tipo</Label>
                       <div className="flex gap-2">
                         {[
-                          { val: "false", label: "Negócio Novo" },
-                          { val: "true", label: "Negócio Repetido" },
+                          { val: "false", label: "Novo negócio" },
+                          { val: "true", label: "Negócio recorrente" },
                         ].map((t) => (
                           <Button key={t.val} type="button" variant={formData.is_repeat_business === t.val ? "default" : "outline"} size="sm" onClick={() => handleChange("is_repeat_business", t.val)} className="border-border">
                             {t.label}
@@ -236,79 +334,8 @@ const ContributionsPage: React.FC = () => {
                     </div>
                     <div className="space-y-2">
                       <Label>Data do fechamento</Label>
-                      <Input type="date" value={formData.closing_date || ""} onChange={(e) => handleChange("closing_date", e.target.value)} className="bg-muted border-border" />
+                      <Input type="date" value={formData.closing_date || ""} onChange={(e) => handleChange("closing_date", e.target.value)} className="bg-muted border-border min-h-[48px]" />
                     </div>
-                  </>
-                )}
-
-                {selectedType === "one_to_one" && (
-                  <>
-                    <div className="space-y-2">
-                      <Label>Local</Label>
-                      <Input value={formData.meeting_location || ""} onChange={(e) => handleChange("meeting_location", e.target.value)} className="bg-muted border-border" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Tópicos (separados por vírgula)</Label>
-                      <Input value={formData.meeting_topics || ""} onChange={(e) => handleChange("meeting_topics", e.target.value)} className="bg-muted border-border" placeholder="Apresentação, GAINS, Oportunidades" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Data</Label>
-                      <Input type="date" value={formData.contribution_date || ""} onChange={(e) => handleChange("contribution_date", e.target.value)} className="bg-muted border-border" />
-                    </div>
-                  </>
-                )}
-
-                {selectedType === "ueg" && (
-                  <>
-                    <div className="space-y-2">
-                      <Label>Tipo</Label>
-                      <select value={formData.ueg_type || ""} onChange={(e) => handleChange("ueg_type", e.target.value)} className="flex h-10 w-full rounded-md border border-border bg-muted px-3 py-2 text-sm" required>
-                        <option value="">Selecione...</option>
-                        <option value="article">Artigo (1pt)</option>
-                        <option value="podcast">Podcast (1pt)</option>
-                        <option value="book">Livro (3pts)</option>
-                        <option value="msp_training">Treinamento MSP (2pts)</option>
-                        <option value="event">Evento (2pts)</option>
-                        <option value="video">Vídeo (1pt)</option>
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Título</Label>
-                      <Input value={formData.ueg_title || ""} onChange={(e) => handleChange("ueg_title", e.target.value)} className="bg-muted border-border" required />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>URL da fonte</Label>
-                      <Input value={formData.ueg_url || ""} onChange={(e) => handleChange("ueg_url", e.target.value)} className="bg-muted border-border" />
-                    </div>
-                  </>
-                )}
-
-                {selectedType === "attendance" && (
-                  <>
-                    <div className="space-y-2">
-                      <Label>Data da reunião</Label>
-                      <Input type="date" value={formData.meeting_date || ""} onChange={(e) => handleChange("meeting_date", e.target.value)} className="bg-muted border-border" required />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Status</Label>
-                      <div className="flex gap-2">
-                        {[
-                          { val: "present", label: "Presente" },
-                          { val: "absent", label: "Ausente" },
-                          { val: "substituted", label: "Substituído" },
-                        ].map((s) => (
-                          <Button key={s.val} type="button" variant={formData.attendance_status === s.val ? "default" : "outline"} size="sm" onClick={() => handleChange("attendance_status", s.val)} className="border-border">
-                            {s.label}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                    {formData.attendance_status === "substituted" && (
-                      <div className="space-y-2">
-                        <Label>Nome do substituto</Label>
-                        <Input value={formData.substitute_name || ""} onChange={(e) => handleChange("substitute_name", e.target.value)} className="bg-muted border-border" />
-                      </div>
-                    )}
                   </>
                 )}
 
@@ -317,7 +344,7 @@ const ContributionsPage: React.FC = () => {
                   <Textarea value={formData.notes || ""} onChange={(e) => handleChange("notes", e.target.value)} className="bg-muted border-border" rows={2} />
                 </div>
 
-                <Button type="submit" className="w-full font-bold uppercase tracking-wider" disabled={createMutation.isPending}>
+                <Button type="submit" className="w-full font-bold uppercase tracking-wider min-h-[48px]" disabled={createMutation.isPending}>
                   {createMutation.isPending ? "Salvando..." : "Registrar"}
                 </Button>
               </form>
@@ -328,7 +355,7 @@ const ContributionsPage: React.FC = () => {
 
       {isLoading ? (
         <div className="space-y-3">
-          {[1, 2, 3].map(i => <div key={i} className="h-16 bg-muted rounded-lg animate-pulse" />)}
+          {[1, 2, 3].map((i) => <div key={i} className="h-16 bg-muted rounded-lg animate-pulse" />)}
         </div>
       ) : contributions?.length === 0 ? (
         <Card className="bg-card border-border">
@@ -344,15 +371,13 @@ const ContributionsPage: React.FC = () => {
               <CardContent className="p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className="text-xs font-bold uppercase text-primary bg-primary/10 px-2 py-1 rounded">
-                    {TYPE_LABELS[c.type as ContributionType]}
+                    {TYPE_LABELS[c.type as ContributionType] || c.type}
                   </span>
                   <div>
                     <p className="text-sm font-medium">
                       {c.type === "referral" && c.contact_name}
                       {c.type === "onf" && `R$ ${Number(c.business_value || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
-                      {c.type === "one_to_one" && (c.meeting_location || "Um-a-Um")}
-                      {c.type === "ueg" && c.ueg_title}
-                      {c.type === "attendance" && `${c.attendance_status === "present" ? "Presente" : c.attendance_status === "absent" ? "Ausente" : "Substituído"}`}
+                      {c.type === "one_to_one" && (c.meeting_location || "Téte a téte")}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {new Date(c.contribution_date).toLocaleDateString("pt-BR")}

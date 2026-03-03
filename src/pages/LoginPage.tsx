@@ -22,7 +22,8 @@ const LoginPage: React.FC = () => {
     try {
       if (isSignUp) {
         await signUp(email, password, fullName);
-        toast.success("Conta criada! Verifique seu email para confirmar.");
+        toast.success("Conta criada! Aguarde a aprovação do administrador.");
+        navigate("/pending");
       } else {
         await signIn(email, password);
         navigate("/");
@@ -54,7 +55,7 @@ const LoginPage: React.FC = () => {
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Seu nome completo"
                 required
-                className="bg-card border-border"
+                className="bg-card border-border min-h-[48px]"
               />
             </div>
           )}
@@ -68,7 +69,7 @@ const LoginPage: React.FC = () => {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="seu@email.com"
               required
-              className="bg-card border-border"
+              className="bg-card border-border min-h-[48px]"
             />
           </div>
 
@@ -82,14 +83,14 @@ const LoginPage: React.FC = () => {
               placeholder="••••••••"
               required
               minLength={6}
-              className="bg-card border-border"
+              className="bg-card border-border min-h-[48px]"
             />
           </div>
 
           <Button
             type="submit"
             disabled={loading}
-            className="w-full font-bold uppercase tracking-wider orange-glow"
+            className="w-full font-bold uppercase tracking-wider orange-glow min-h-[48px]"
           >
             {loading ? "Carregando..." : isSignUp ? "Criar Conta" : "Entrar"}
           </Button>
