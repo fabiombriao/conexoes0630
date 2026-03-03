@@ -674,6 +674,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_notification: {
+        Args: {
+          _link?: string
+          _message: string
+          _title: string
+          _type: string
+          _user_id: string
+        }
+        Returns: undefined
+      }
       get_user_group_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
@@ -681,6 +691,15 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      notify_superadmins: {
+        Args: {
+          _link?: string
+          _message: string
+          _title: string
+          _type: string
+        }
+        Returns: undefined
       }
       recalculate_ranking_positions: {
         Args: { _group_id: string; _month: string }
