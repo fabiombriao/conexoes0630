@@ -1,12 +1,23 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import Logo from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { Clock } from "lucide-react";
+import { toast } from "sonner";
 
 const PendingApprovalPage: React.FC = () => {
   const { signOut } = useAuth();
+  const navigate = useNavigate();
 
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      navigate("/login", { replace: true });
+    } catch (error: any) {
+      toast.error("Erro ao sair: " + (error.message || "Tente novamente"));
+    }
+  };
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-md space-y-8 text-center">
@@ -20,7 +31,7 @@ const PendingApprovalPage: React.FC = () => {
             Sua solicitação foi enviada! Aguarde a aprovação do administrador para acessar o sistema.
           </p>
         </div>
-        <Button variant="outline" onClick={() => signOut()} className="border-border">
+        <Button variant="outline" onClick={handleSignOut} className="border-border">
           Sair
         </Button>
       </div>
