@@ -682,6 +682,22 @@ export type Database = {
         }
         Returns: boolean
       }
+      recalculate_ranking_positions: {
+        Args: { _group_id: string; _month: string }
+        Returns: undefined
+      }
+      upsert_ranking_points: {
+        Args: {
+          _deal?: number
+          _group_id: string
+          _indication?: number
+          _member_id: string
+          _month: string
+          _presence?: number
+          _tt?: number
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "member" | "group_leader" | "admin"
