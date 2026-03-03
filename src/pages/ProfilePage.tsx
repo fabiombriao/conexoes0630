@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Save } from "lucide-react";
+import AvatarUpload from "@/components/AvatarUpload";
 
 const BUSINESS_CATEGORIES = [
   "Advocacia", "Arquitetura", "Consultoria", "Contabilidade", "Coaching",
@@ -101,6 +102,17 @@ const ProfilePage: React.FC = () => {
       <Card className="bg-card border-border">
         <CardHeader><CardTitle className="text-lg font-display">Informações Básicas</CardTitle></CardHeader>
         <CardContent className="space-y-4">
+          <div className="flex items-center gap-6 pb-2">
+            <AvatarUpload
+              currentUrl={formData.avatar_url}
+              fullName={formData.full_name}
+              size={96}
+            />
+            <div className="text-sm text-muted-foreground">
+              Clique na foto para alterar.<br />
+              JPEG, PNG ou WebP, máx 5MB.
+            </div>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Nome completo</Label>
