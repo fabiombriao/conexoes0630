@@ -21,7 +21,7 @@ const RankingPage: React.FC = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("monthly_rankings")
-        .select("*, profiles(full_name, avatar_url)")
+        .select("*, profiles:member_id(full_name, avatar_url)")
         .eq("group_id", groupId)
         .eq("month", currentMonth)
         .order("total_points", { ascending: false });
@@ -29,6 +29,7 @@ const RankingPage: React.FC = () => {
       return data;
     },
     enabled: !!groupId,
+    staleTime: 60_000,
   });
 
   const { data: archivedMonths } = useQuery({
@@ -52,7 +53,7 @@ const RankingPage: React.FC = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("monthly_rankings")
-        .select("*, profiles(full_name, avatar_url)")
+        .select("*, profiles:member_id(full_name, avatar_url)")
         .eq("group_id", groupId)
         .eq("month", historyMonth)
         .order("total_points", { ascending: false });
@@ -60,6 +61,7 @@ const RankingPage: React.FC = () => {
       return data;
     },
     enabled: !!groupId && !!historyMonth,
+    staleTime: 60_000,
   });
 
   const formatMonth = (m: string) => {
