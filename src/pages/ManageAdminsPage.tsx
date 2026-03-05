@@ -40,7 +40,7 @@ const DEFAULT_PERMS: AdminPermissionsData = {
 const PERM_META: { key: keyof AdminPermissionsData; label: string; desc: string }[] = [
   { key: "canControlAttendance", label: "Controle de Presença", desc: "Pode abrir e enviar listas de presença para aprovação" },
   { key: "canCreateEvents", label: "Criar Eventos", desc: "Pode criar, editar e excluir eventos na agenda" },
-  { key: "canViewReports", label: "Visualizar Relatórios", desc: "Acesso aos relatórios TIM de todos os membros" },
+  { key: "canViewReports", label: "Visualizar Relatórios", desc: "Acesso aos relatórios TIN de todos os membros" },
   { key: "canManageProfiles", label: "Gerenciar Perfis", desc: "Pode editar dados de perfil de membros" },
   { key: "canSendAnnouncements", label: "Enviar Avisos", desc: "Pode enviar notificações e avisos ao grupo" },
   { key: "canViewInvitations", label: "Ver Indicações Realizadas", desc: "Acesso ao menu de indicações de visitantes" },

@@ -26,9 +26,9 @@ const TYPE_LABELS: Record<ContributionType, string> = {
   onf: "M — Negócios Fechados",
 };
 
-const TIM_ORDER: ContributionType[] = ["one_to_one", "referral", "onf"];
+const TIN_ORDER: ContributionType[] = ["one_to_one", "referral", "onf"];
 
-const TIM_POINTS: Record<ContributionType, number> = {
+const TIN_POINTS: Record<ContributionType, number> = {
   one_to_one: 2,
   referral: 1,
   onf: 3,
@@ -135,7 +135,7 @@ const ContributionsPage: React.FC = () => {
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-display font-bold">Minhas Contribuições TIM</h1>
+        <h1 className="text-2xl font-display font-bold">Minhas Contribuições TIN</h1>
         <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) { setSelectedType(null); setFormData({}); setSelectedTopics([]); } }}>
           <DialogTrigger asChild>
             <Button className="font-bold uppercase tracking-wider">
@@ -145,12 +145,12 @@ const ContributionsPage: React.FC = () => {
           </DialogTrigger>
           <DialogContent className="bg-popover border-border max-h-[90vh] overflow-y-auto sm:max-w-lg">
             <DialogHeader>
-              <DialogTitle className="font-display">Nova Contribuição TIM</DialogTitle>
+              <DialogTitle className="font-display">Nova Contribuição TIN</DialogTitle>
             </DialogHeader>
 
             {!selectedType ? (
               <div className="grid grid-cols-1 gap-2">
-                {TIM_ORDER.map((type) => (
+                {TIN_ORDER.map((type) => (
                   <Button
                     key={type}
                     variant="outline"
@@ -159,7 +159,7 @@ const ContributionsPage: React.FC = () => {
                   >
                     <span className="flex-1">{TYPE_LABELS[type]}</span>
                     <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full ml-2">
-                      {TIM_POINTS[type]} pts
+                      {TIN_POINTS[type]} pts
                     </span>
                   </Button>
                 ))}
@@ -172,7 +172,7 @@ const ContributionsPage: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <p className="text-sm text-primary font-bold uppercase">{TYPE_LABELS[selectedType]}</p>
                   <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
-                    {TIM_POINTS[selectedType]} pts
+                    {TIN_POINTS[selectedType]} pts
                   </span>
                 </div>
 
