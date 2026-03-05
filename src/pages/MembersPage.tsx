@@ -11,29 +11,27 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Users, Search, Linkedin, Instagram, Globe, Phone, Calendar } from "lucide-react";
-import { useGroupId } from "@/hooks/useGroupId";
-
 const MembersPage: React.FC = () => {
-  const { groupId } = useGroupId();
   const [search, setSearch] = useState("");
   const [selectedMember, setSelectedMember] = useState<any>(null);
 
   const { data: members, isLoading } = useQuery({
-    queryKey: ["members-list", groupId],
+    queryKey: ["members-list"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("group_members")
-        .select("user_id, profiles(*)")
-        .eq("group_id", groupId);
+        .from("profiles")
+        .select("id, full_name, professional_title, company_name, avatar_url, bio, keywords, linkedin_url, instagram_url, whatsapp, website_url, gains_goals, gains_accomplishments, gains_interests, gains_networks, gains_skills")
+        .eq("status", "active")
+        .order("full_name", { ascending: true });
+
       if (error) throw error;
       return data;
     },
-    enabled: !!groupId,
   });
 
   const filtered = members?.filter((m: any) => {
-    const name = m.profiles?.full_name?.toLowerCase() || "";
-    const keywords = (m.profiles?.keywords || []).join(" ").toLowerCase();
+    const name = m.full_name?.toLowerCase() || "";
+    const keywords = (m.keywords || []).join(" ").toLowerCase();
     const q = search.toLowerCase();
     return name.includes(q) || keywords.includes(q);
   });
@@ -68,23 +66,23 @@ const MembersPage: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((m: any) => (
             <Card
-              key={m.user_id}
+              key={m.id}
               className="bg-card border-border card-hover-border cursor-pointer hover:bg-muted/30 transition-colors"
-              onClick={() => setSelectedMember(m.profiles)}
+              onClick={() => setSelectedMember(m)}
             >
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
                   <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-lg ring-2 ring-primary">
-                    {m.profiles?.avatar_url ? (
-                      <img src={m.profiles.avatar_url} alt="" className="h-12 w-12 rounded-full object-cover" />
+                    {m.avatar_url ? (
+                      <img src={m.avatar_url} alt="" className="h-12 w-12 rounded-full object-cover" />
                     ) : (
-                      m.profiles?.full_name?.[0] || "?"
+                      m.full_name?.[0] || "?"
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p className="font-medium truncate">{m.profiles?.full_name || "Membro"}</p>
-                    <p className="text-sm text-muted-foreground truncate">{m.profiles?.professional_title}</p>
-                    <p className="text-xs text-muted-foreground truncate">{m.profiles?.company_name}</p>
+                    <p className="font-medium truncate">{m.full_name || "Membro"}</p>
+                    <p className="text-sm text-muted-foreground truncate">{m.professional_title}</p>
+                    <p className="text-xs text-muted-foreground truncate">{m.company_name}</p>
                   </div>
                 </div>
               </CardContent>
