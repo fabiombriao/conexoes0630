@@ -1,15 +1,21 @@
-import React from "react";
+import React, { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Bell, Check } from "lucide-react";
+import { Bell, Check, Megaphone } from "lucide-react";
+import { usePermissions } from "@/hooks/usePermissions";
+import BroadcastNotificationDialog from "@/components/BroadcastNotificationDialog";
 
 const NotificationsPage: React.FC = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { isSuperAdmin, can } = usePermissions();
+  const [broadcastOpen, setBroadcastOpen] = useState(false);
+
+  const canSendAnnouncements = isSuperAdmin || can("send_announcements");
 
   const { data: notifications, isLoading } = useQuery({
     queryKey: ["notifications", user?.id],
@@ -41,14 +47,22 @@ const NotificationsPage: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-display font-bold">Notificações</h1>
-        {unreadCount > 0 && (
-          <Button variant="outline" size="sm" className="border-border" onClick={() => markAllReadMutation.mutate()}>
-            <Check className="h-4 w-4 mr-1" />
-            Marcar todas como lidas
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {canSendAnnouncements && (
+            <Button variant="default" size="sm" className="gap-1" onClick={() => setBroadcastOpen(true)}>
+              <Megaphone className="h-4 w-4" />
+              Enviar Aviso
+            </Button>
+          )}
+          {unreadCount > 0 && (
+            <Button variant="outline" size="sm" className="border-border" onClick={() => markAllReadMutation.mutate()}>
+              <Check className="h-4 w-4 mr-1" />
+              Marcar todas como lidas
+            </Button>
+          )}
+        </div>
       </div>
 
       {isLoading ? (
@@ -80,6 +94,8 @@ const NotificationsPage: React.FC = () => {
           ))}
         </div>
       )}
+
+      <BroadcastNotificationDialog open={broadcastOpen} onOpenChange={setBroadcastOpen} />
     </div>
   );
 };

@@ -674,6 +674,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      broadcast_notification: {
+        Args: {
+          _link?: string
+          _message: string
+          _title: string
+          _type: string
+        }
+        Returns: undefined
+      }
       create_notification: {
         Args: {
           _link?: string
