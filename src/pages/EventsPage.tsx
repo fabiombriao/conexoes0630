@@ -31,7 +31,6 @@ const EventsPage: React.FC = () => {
   const canCreateEvents = isSuperAdmin || can("create_events");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [formData, setFormData] = useState<Record<string, any>>({});
-  const [interestedEvents, setInterestedEvents] = useState<Set<string>>(new Set());
 
   const { data: events, isLoading } = useQuery({
     queryKey: ["events", groupId],
@@ -46,6 +45,58 @@ const EventsPage: React.FC = () => {
     },
     enabled: !!groupId,
   });
+
+  // Fetch user's registrations from DB
+  const { data: registrations } = useQuery({
+    queryKey: ["event-registrations", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("event_registrations")
+        .select("event_id")
+        .eq("user_id", user!.id);
+      if (error) throw error;
+      return new Set(data.map((r) => r.event_id));
+    },
+    enabled: !!user,
+  });
+
+  const registerMutation = useMutation({
+    mutationFn: async (eventId: string) => {
+      const { error } = await supabase
+        .from("event_registrations")
+        .insert({ event_id: eventId, user_id: user!.id });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["event-registrations"] });
+      toast.success("Interesse registrado!");
+    },
+    onError: () => toast.error("Erro ao registrar interesse"),
+  });
+
+  const unregisterMutation = useMutation({
+    mutationFn: async (eventId: string) => {
+      const { error } = await supabase
+        .from("event_registrations")
+        .delete()
+        .eq("event_id", eventId)
+        .eq("user_id", user!.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["event-registrations"] });
+      toast.success("Interesse removido");
+    },
+    onError: () => toast.error("Erro ao remover interesse"),
+  });
+
+  const toggleInterest = (eventId: string) => {
+    if (registrations?.has(eventId)) {
+      unregisterMutation.mutate(eventId);
+    } else {
+      registerMutation.mutate(eventId);
+    }
+  };
 
   const createEventMutation = useMutation({
     mutationFn: async () => {
@@ -70,21 +121,12 @@ const EventsPage: React.FC = () => {
     onError: (e: any) => toast.error(e.message),
   });
 
-  const toggleInterest = (eventId: string) => {
-    setInterestedEvents((prev) => {
-      const next = new Set(prev);
-      if (next.has(eventId)) next.delete(eventId);
-      else next.add(eventId);
-      return next;
-    });
-  };
-
   const presentations = events?.filter((e) => e.event_type === "weekly_meeting") ?? [];
   const otherEvents = events?.filter((e) => e.event_type !== "weekly_meeting") ?? [];
 
   const renderEventCard = (event: any) => {
     const d = new Date(event.event_date);
-    const isInterested = interestedEvents.has(event.id);
+    const isInterested = registrations?.has(event.id) ?? false;
     return (
       <Card key={event.id} className="bg-card border-border card-hover-border">
         <CardContent className="p-0 flex">
@@ -110,6 +152,7 @@ const EventsPage: React.FC = () => {
               variant={isInterested ? "default" : "outline"}
               className="mt-2 self-start border-border text-xs"
               onClick={() => toggleInterest(event.id)}
+              disabled={registerMutation.isPending || unregisterMutation.isPending}
             >
               <Heart className={`h-3 w-3 mr-1 ${isInterested ? "fill-current" : ""}`} />
               {isInterested ? "Interessado" : "Tenho Interesse"}

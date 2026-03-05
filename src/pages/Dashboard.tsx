@@ -4,10 +4,24 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DollarSign, Users, ArrowUpRight, Flame } from "lucide-react";
+import { DollarSign, Users, ArrowUpRight, Flame, Handshake, Send, FileCheck } from "lucide-react";
+import { useGroupId } from "@/hooks/useGroupId";
+
+const TYPE_ICONS: Record<string, React.ReactNode> = {
+  one_to_one: <Users className="h-4 w-4 text-secondary" />,
+  referral: <Send className="h-4 w-4 text-primary" />,
+  onf: <Handshake className="h-4 w-4 text-success" />,
+};
+
+const TYPE_LABELS: Record<string, string> = {
+  one_to_one: "Téte a téte",
+  referral: "Indicação",
+  onf: "Negócio Fechado",
+};
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
+  const { groupId } = useGroupId();
 
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],
@@ -24,7 +38,7 @@ const Dashboard: React.FC = () => {
   });
 
   const { data: stats, isLoading } = useQuery({
-    queryKey: ["dashboard-stats", user?.id],
+    queryKey: ["dashboard-stats", user?.id, groupId],
     queryFn: async () => {
       const weekAgo = new Date();
       weekAgo.setDate(weekAgo.getDate() - 7);
@@ -41,25 +55,55 @@ const Dashboard: React.FC = () => {
       const deals_total = deals.reduce((sum, c) => sum + (Number(c.business_value) || 0), 0);
       const tete_a_tetes = contributions?.filter((c) => c.type === "one_to_one").length ?? 0;
 
-      // Simple attendance streak
-      const { data: allAttendance } = await supabase
-        .from("contributions")
-        .select("contribution_date, attendance_status")
-        .eq("user_id", user!.id)
-        .eq("type", "attendance")
-        .order("contribution_date", { ascending: false })
+      // Attendance streak from attendance_records + approved sessions
+      const { data: approvedSessions } = await supabase
+        .from("attendance_sessions")
+        .select("id, session_date")
+        .eq("group_id", groupId)
+        .eq("status", "approved")
+        .eq("is_test", false)
+        .order("session_date", { ascending: false })
         .limit(52);
 
       let streak = 0;
-      if (allAttendance) {
-        for (const a of allAttendance) {
-          if (a.attendance_status === "present" || a.attendance_status === "substituted") {
+      if (approvedSessions && approvedSessions.length > 0) {
+        const sessionIds = approvedSessions.map((s) => s.id);
+        const { data: records } = await supabase
+          .from("attendance_records")
+          .select("session_id, status")
+          .eq("member_id", user!.id)
+          .in("session_id", sessionIds);
+
+        const recordMap = new Map(records?.map((r) => [r.session_id, r.status]) ?? []);
+
+        for (const session of approvedSessions) {
+          const status = recordMap.get(session.id);
+          if (status === "present" || status === "substituted") {
             streak++;
-          } else break;
+          } else {
+            break;
+          }
         }
       }
 
       return { indications, deals_total, tete_a_tetes, streak };
+    },
+    enabled: !!user && !!groupId,
+  });
+
+  // Recent activity: last 10 contributions
+  const { data: recentActivity } = useQuery({
+    queryKey: ["recent-activity", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("contributions")
+        .select("id, type, contribution_date, contact_name, meeting_location, business_value, created_at")
+        .eq("user_id", user!.id)
+        .in("type", ["one_to_one", "referral", "onf"])
+        .order("created_at", { ascending: false })
+        .limit(10);
+      if (error) throw error;
+      return data;
     },
     enabled: !!user,
   });
@@ -72,6 +116,13 @@ const Dashboard: React.FC = () => {
     { label: "Indicações", value: stats?.indications ?? 0, icon: ArrowUpRight, color: "text-primary" },
     { label: "Presença", value: `${stats?.streak ?? 0} sem.`, icon: Flame, color: "text-primary" },
   ];
+
+  const getActivityDescription = (item: any) => {
+    if (item.type === "one_to_one") return item.meeting_location ? `em ${item.meeting_location}` : "";
+    if (item.type === "referral") return item.contact_name ? `para ${item.contact_name}` : "";
+    if (item.type === "onf") return item.business_value ? `R$ ${Number(item.business_value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "";
+    return "";
+  };
 
   return (
     <div className="space-y-6 max-w-6xl">
@@ -106,10 +157,29 @@ const Dashboard: React.FC = () => {
       <Card className="bg-card border-border">
         <CardContent className="p-6">
           <h2 className="font-display font-bold text-lg mb-4">Atividade Recente</h2>
-          <div className="text-center py-8 text-muted-foreground">
-            <p>Nenhuma atividade recente.</p>
-            <p className="text-sm mt-1">Comece registrando uma contribuição!</p>
-          </div>
+          {!recentActivity || recentActivity.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>Nenhuma atividade recente.</p>
+              <p className="text-sm mt-1">Comece registrando uma contribuição!</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {recentActivity.map((item) => (
+                <div key={item.id} className="flex items-center gap-3 py-2 border-b border-border last:border-b-0">
+                  <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                    {TYPE_ICONS[item.type]}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">{TYPE_LABELS[item.type] || item.type}</p>
+                    <p className="text-xs text-muted-foreground truncate">{getActivityDescription(item)}</p>
+                  </div>
+                  <span className="text-xs text-muted-foreground shrink-0">
+                    {new Date(item.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

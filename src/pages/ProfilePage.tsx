@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Save } from "lucide-react";
+import { Save, X, Plus } from "lucide-react";
 import AvatarUpload from "@/components/AvatarUpload";
 
 const BUSINESS_CATEGORIES = [
@@ -21,6 +22,7 @@ const BUSINESS_CATEGORIES = [
 const ProfilePage: React.FC = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [newKeyword, setNewKeyword] = useState("");
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["profile", user?.id],
@@ -62,6 +64,7 @@ const ProfilePage: React.FC = () => {
           whatsapp: data.whatsapp,
           website_url: data.website_url,
           video_url: data.video_url,
+          keywords: data.keywords || [],
           profile_completed: true,
         })
         .eq("id", user!.id);
@@ -76,6 +79,23 @@ const ProfilePage: React.FC = () => {
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const addKeyword = () => {
+    const kw = newKeyword.trim();
+    if (!kw) return;
+    const current: string[] = formData.keywords || [];
+    if (current.includes(kw)) {
+      toast.error("Palavra-chave já existe");
+      return;
+    }
+    setFormData((prev) => ({ ...prev, keywords: [...current, kw] }));
+    setNewKeyword("");
+  };
+
+  const removeKeyword = (kw: string) => {
+    const current: string[] = formData.keywords || [];
+    setFormData((prev) => ({ ...prev, keywords: current.filter((k) => k !== kw) }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -149,6 +169,31 @@ const ProfilePage: React.FC = () => {
               className="bg-muted border-border"
               rows={3}
             />
+          </div>
+          <div className="space-y-2">
+            <Label>Palavras-chave</Label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {(formData.keywords || []).map((kw: string) => (
+                <Badge key={kw} variant="secondary" className="gap-1 pr-1">
+                  {kw}
+                  <button type="button" onClick={() => removeKeyword(kw)} className="hover:text-destructive ml-1">
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Input
+                value={newKeyword}
+                onChange={(e) => setNewKeyword(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addKeyword(); } }}
+                placeholder="Adicionar palavra-chave..."
+                className="bg-muted border-border"
+              />
+              <Button type="button" variant="outline" size="icon" onClick={addKeyword} className="shrink-0 border-border">
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
