@@ -2,7 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 Deno.serve(async (req) => {
@@ -68,19 +68,41 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { data: created, error: createError } = await adminClient.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: { full_name: fullName },
-    });
+    // Check if user already exists by email
+    const { data: existingUsers } = await adminClient.auth.admin.listUsers();
+    const existingUser = existingUsers?.users?.find(
+      (u) => u.email?.toLowerCase() === email
+    );
 
-    if (createError || !created.user) {
-      throw createError ?? new Error("Falha ao criar usuário");
+    let userId: string;
+
+    if (existingUser) {
+      // User already exists - promote them
+      userId = existingUser.id;
+
+      // Update their password and confirm email
+      await adminClient.auth.admin.updateUserById(userId, {
+        password,
+        email_confirm: true,
+        user_metadata: { full_name: fullName },
+      });
+    } else {
+      // Create new user
+      const { data: created, error: createError } = await adminClient.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { full_name: fullName },
+      });
+
+      if (createError || !created.user) {
+        throw createError ?? new Error("Falha ao criar usuário");
+      }
+
+      userId = created.user.id;
     }
 
-    const userId = created.user.id;
-
+    // Upsert profile
     const { error: profileError } = await adminClient
       .from("profiles")
       .upsert(
@@ -95,6 +117,7 @@ Deno.serve(async (req) => {
 
     if (profileError) throw profileError;
 
+    // Clear existing roles and assign new one
     const { error: clearRolesError } = await adminClient.from("user_roles").delete().eq("user_id", userId);
     if (clearRolesError) throw clearRolesError;
 
@@ -104,7 +127,17 @@ Deno.serve(async (req) => {
 
     if (assignRoleError) throw assignRoleError;
 
-    return new Response(JSON.stringify({ success: true, user_id: userId }), {
+    // Ensure user is in the default group
+    const { error: groupError } = await adminClient
+      .from("group_members")
+      .upsert(
+        { user_id: userId, group_id: "00000000-0000-0000-0000-000000000001" },
+        { onConflict: "user_id,group_id" }
+      );
+
+    if (groupError) throw groupError;
+
+    return new Response(JSON.stringify({ success: true, user_id: userId, promoted: !!existingUser }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {

@@ -7,16 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useGroupId } from "@/hooks/useGroupId";
 import {
-  BarChart,
-  Bar,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  LineChart,
-  Line,
 } from "recharts";
 
 const PRESETS = [
@@ -28,6 +27,7 @@ const PRESETS = [
 const ReportsPage: React.FC = () => {
   const { user } = useAuth();
   const { isSuperAdmin, can } = usePermissions();
+  const { groupId } = useGroupId();
   const isFullReport = isSuperAdmin || can("view_reports");
 
   const [startDate, setStartDate] = useState(() => {
@@ -46,20 +46,29 @@ const ReportsPage: React.FC = () => {
   };
 
   const { data: contributions, isLoading } = useQuery({
-    queryKey: ["report-contributions", user?.id, startDate, endDate],
+    queryKey: ["report-contributions", user?.id, startDate, endDate, isFullReport, groupId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("contributions")
         .select("*")
-        .eq("user_id", user!.id)
         .in("type", ["one_to_one", "referral", "onf"])
         .gte("contribution_date", startDate)
         .lte("contribution_date", endDate)
         .order("contribution_date", { ascending: true });
+
+      if (isFullReport) {
+        // Admin sees all group contributions
+        query = query.eq("group_id", groupId);
+      } else {
+        // Regular member sees only their own
+        query = query.eq("user_id", user!.id);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
-    enabled: !!user,
+    enabled: !!user && !!groupId,
   });
 
   const totalTT = contributions?.filter((c) => c.type === "one_to_one").length ?? 0;
@@ -107,7 +116,9 @@ const ReportsPage: React.FC = () => {
   return (
     <div className="space-y-6 max-w-6xl">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-2xl font-display font-bold">Relatórios TIN</h1>
+        <h1 className="text-2xl font-display font-bold">
+          {isFullReport ? "Relatórios do Grupo" : "Meus Relatórios TIN"}
+        </h1>
         <Button variant="outline" onClick={exportCSV} className="border-border">
           Exportar CSV
         </Button>
