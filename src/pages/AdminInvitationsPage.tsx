@@ -10,36 +10,51 @@ import { Label } from "@/components/ui/label";
 import {
   Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
 } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FileText, Download, ChevronLeft, ChevronRight, ArrowUpDown, X } from "lucide-react";
 import { format } from "date-fns";
 import { useGroupId } from "@/hooks/useGroupId";
 
-type SortKey = "member" | "visitor" | "whatsapp" | "profession" | "event_date" | "created_at";
+type SortKey = "member" | "contact" | "category" | "temperature" | "status" | "date";
 type SortDir = "asc" | "desc";
 
 const PAGE_SIZE = 10;
+
+const TEMP_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  hot: { label: "Quente 🔥", variant: "destructive" },
+  warm: { label: "Morna ☀️", variant: "default" },
+  cold: { label: "Fria ❄️", variant: "secondary" },
+};
+
+const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  new: { label: "Nova", variant: "outline" },
+  pending: { label: "Em andamento", variant: "default" },
+  closed_won: { label: "Fechada ✅", variant: "default" },
+  closed_lost: { label: "Perdida", variant: "destructive" },
+};
 
 const AdminInvitationsPage: React.FC = () => {
   const { isSuperAdmin, can } = usePermissions();
   const { groupId } = useGroupId();
   const hasAccess = isSuperAdmin || can("view_visitor_invitations") || can("canViewInvitations");
-  
+
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [memberFilter, setMemberFilter] = useState("");
-  const [sortKey, setSortKey] = useState<SortKey>("created_at");
+  const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [page, setPage] = useState(0);
 
-  const { data: invitations, isLoading } = useQuery({
-    queryKey: ["admin-invitations", groupId],
+  const { data: referrals, isLoading } = useQuery({
+    queryKey: ["admin-referrals", groupId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("visitor_invitations")
-        .select("*, profiles:invited_by(full_name, avatar_url)")
+        .from("contributions")
+        .select("*, profiles:user_id(full_name, avatar_url)")
         .eq("group_id", groupId)
-        .order("created_at", { ascending: false });
+        .eq("type", "referral")
+        .order("contribution_date", { ascending: false });
       if (error) throw error;
       return data;
     },
@@ -60,28 +75,28 @@ const AdminInvitationsPage: React.FC = () => {
   });
 
   const filtered = useMemo(() => {
-    if (!invitations) return [];
-    let result = [...invitations];
+    if (!referrals) return [];
+    let result = [...referrals];
 
-    if (startDate) result = result.filter((r) => r.created_at >= startDate);
-    if (endDate) result = result.filter((r) => r.created_at <= endDate + "T23:59:59");
-    if (memberFilter) result = result.filter((r) => r.invited_by === memberFilter);
+    if (startDate) result = result.filter((r) => r.contribution_date >= startDate);
+    if (endDate) result = result.filter((r) => r.contribution_date <= endDate);
+    if (memberFilter) result = result.filter((r) => r.user_id === memberFilter);
 
     result.sort((a, b) => {
       let va: string, vb: string;
       switch (sortKey) {
         case "member": va = (a as any).profiles?.full_name || ""; vb = (b as any).profiles?.full_name || ""; break;
-        case "visitor": va = a.visitor_name; vb = b.visitor_name; break;
-        case "whatsapp": va = a.visitor_whatsapp || ""; vb = b.visitor_whatsapp || ""; break;
-        case "profession": va = a.visitor_profession || ""; vb = b.visitor_profession || ""; break;
-        case "event_date": va = a.event_date; vb = b.event_date; break;
-        default: va = a.created_at; vb = b.created_at;
+        case "contact": va = a.contact_name || ""; vb = b.contact_name || ""; break;
+        case "category": va = a.referral_category || ""; vb = b.referral_category || ""; break;
+        case "temperature": va = a.temperature || ""; vb = b.temperature || ""; break;
+        case "status": va = a.referral_status || ""; vb = b.referral_status || ""; break;
+        default: va = a.contribution_date; vb = b.contribution_date;
       }
       return sortDir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
     });
 
     return result;
-  }, [invitations, startDate, endDate, memberFilter, sortKey, sortDir]);
+  }, [referrals, startDate, endDate, memberFilter, sortKey, sortDir]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paged = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
@@ -94,14 +109,14 @@ const AdminInvitationsPage: React.FC = () => {
   const clearFilters = () => { setStartDate(""); setEndDate(""); setMemberFilter(""); setPage(0); };
 
   const exportCSV = () => {
-    const headers = ["Membro", "Visitante", "WhatsApp", "Profissão", "Data do Evento", "Enviado em"];
+    const headers = ["Membro", "Contato", "Categoria", "Temperatura", "Status", "Data"];
     const rows = filtered.map((r: any) => [
       r.profiles?.full_name || "",
-      r.visitor_name,
-      r.visitor_whatsapp || "",
-      r.visitor_profession || "",
-      r.event_date ? format(new Date(r.event_date + "T12:00:00"), "dd/MM/yyyy") : "",
-      r.created_at ? format(new Date(r.created_at), "dd/MM/yyyy HH:mm") : "",
+      r.contact_name || "",
+      r.referral_category || "",
+      TEMP_LABELS[r.temperature]?.label || r.temperature || "",
+      STATUS_LABELS[r.referral_status]?.label || r.referral_status || "",
+      r.contribution_date ? format(new Date(r.contribution_date + "T12:00:00"), "dd/MM/yyyy") : "",
     ]);
     const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -182,35 +197,43 @@ const AdminInvitationsPage: React.FC = () => {
               <TableHeader>
                 <TableRow className="bg-muted/30">
                   <SortableHead label="Membro" k="member" />
-                  <SortableHead label="Visitante" k="visitor" />
-                  <SortableHead label="WhatsApp" k="whatsapp" />
-                  <SortableHead label="Profissão" k="profession" />
-                  <SortableHead label="Data Evento" k="event_date" />
-                  <SortableHead label="Enviado em" k="created_at" />
+                  <SortableHead label="Contato" k="contact" />
+                  <SortableHead label="Categoria" k="category" />
+                  <SortableHead label="Temperatura" k="temperature" />
+                  <SortableHead label="Status" k="status" />
+                  <SortableHead label="Data" k="date" />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paged.map((r: any) => (
-                  <TableRow key={r.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs font-bold ring-1 ring-primary/30 shrink-0">
-                          {r.profiles?.avatar_url ? (
-                            <img src={r.profiles.avatar_url} alt="" className="h-8 w-8 rounded-full object-cover" />
-                          ) : (
-                            r.profiles?.full_name?.[0] || "?"
-                          )}
+                {paged.map((r: any) => {
+                  const tempInfo = TEMP_LABELS[r.temperature] || { label: r.temperature || "—", variant: "outline" as const };
+                  const statusInfo = STATUS_LABELS[r.referral_status] || { label: r.referral_status || "—", variant: "outline" as const };
+                  return (
+                    <TableRow key={r.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs font-bold ring-1 ring-primary/30 shrink-0">
+                            {r.profiles?.avatar_url ? (
+                              <img src={r.profiles.avatar_url} alt="" className="h-8 w-8 rounded-full object-cover" />
+                            ) : (
+                              r.profiles?.full_name?.[0] || "?"
+                            )}
+                          </div>
+                          <span className="text-sm truncate">{r.profiles?.full_name || "—"}</span>
                         </div>
-                        <span className="text-sm truncate">{r.profiles?.full_name || "—"}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm">{r.visitor_name}</TableCell>
-                    <TableCell className="text-sm font-mono">{r.visitor_whatsapp || "—"}</TableCell>
-                    <TableCell className="text-sm">{r.visitor_profession || "—"}</TableCell>
-                    <TableCell className="text-sm">{r.event_date ? format(new Date(r.event_date + "T12:00:00"), "dd/MM/yyyy") : "—"}</TableCell>
-                    <TableCell className="text-sm">{r.created_at ? format(new Date(r.created_at), "dd/MM/yyyy HH:mm") : "—"}</TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+                      <TableCell className="text-sm">{r.contact_name || "—"}</TableCell>
+                      <TableCell className="text-sm">{r.referral_category || "—"}</TableCell>
+                      <TableCell>
+                        <Badge variant={tempInfo.variant}>{tempInfo.label}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
+                      </TableCell>
+                      <TableCell className="text-sm">{r.contribution_date ? format(new Date(r.contribution_date + "T12:00:00"), "dd/MM/yyyy") : "—"}</TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
