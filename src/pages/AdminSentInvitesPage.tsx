@@ -28,8 +28,8 @@ const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secon
 };
 
 const AdminSentInvitesPage: React.FC = () => {
-  const { isSuperAdmin } = usePermissions();
-  const { groupId } = useGroupId();
+  const { isSuperAdmin, isPermissionsLoading } = usePermissions();
+  const { groupId, isLoading: groupLoading } = useGroupId();
 
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -38,18 +38,20 @@ const AdminSentInvitesPage: React.FC = () => {
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [page, setPage] = useState(0);
 
+  const ready = !isPermissionsLoading && !groupLoading && !!groupId && isSuperAdmin;
+
   const { data: invitations, isLoading } = useQuery({
     queryKey: ["admin-sent-invites", groupId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("visitor_invitations")
         .select("*, profiles:invited_by(full_name, avatar_url)")
-        .eq("group_id", groupId)
+        .eq("group_id", groupId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
-    enabled: !!groupId && isSuperAdmin,
+    enabled: ready,
   });
 
   const { data: members } = useQuery({
@@ -58,11 +60,11 @@ const AdminSentInvitesPage: React.FC = () => {
       const { data, error } = await supabase
         .from("group_members")
         .select("user_id, profiles:user_id(full_name)")
-        .eq("group_id", groupId);
+        .eq("group_id", groupId!);
       if (error) throw error;
       return data;
     },
-    enabled: !!groupId && isSuperAdmin,
+    enabled: ready,
   });
 
   const filtered = useMemo(() => {
@@ -119,7 +121,7 @@ const AdminSentInvitesPage: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  if (!isSuperAdmin) return <Navigate to="/" replace />;
+  if (!isPermissionsLoading && !isSuperAdmin) return <Navigate to="/" replace />;
 
   const SortableHead = ({ label, k }: { label: string; k: SortKey }) => (
     <TableHead className="cursor-pointer select-none" onClick={() => toggleSort(k)}>
@@ -171,7 +173,7 @@ const AdminSentInvitesPage: React.FC = () => {
         </CardContent>
       </Card>
 
-      {isLoading ? (
+      {isLoading || isPermissionsLoading || groupLoading ? (
         <div className="space-y-2">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-14" />)}</div>
       ) : filtered.length === 0 ? (
         <Card className="bg-card border-border">
