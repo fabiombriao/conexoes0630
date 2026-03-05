@@ -13,7 +13,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { FileText, Download, ChevronLeft, ChevronRight, ArrowUpDown, X } from "lucide-react";
 import { format } from "date-fns";
-import { useAuth } from "@/contexts/AuthContext";
+import { useGroupId } from "@/hooks/useGroupId";
 
 type SortKey = "member" | "visitor" | "whatsapp" | "profession" | "event_date" | "created_at";
 type SortDir = "asc" | "desc";
@@ -22,8 +22,7 @@ const PAGE_SIZE = 10;
 
 const AdminInvitationsPage: React.FC = () => {
   const { isSuperAdmin, can } = usePermissions();
-  const { user } = useAuth();
-
+  const { groupId } = useGroupId();
   const hasAccess = isSuperAdmin || can("view_visitor_invitations") || can("canViewInvitations");
   
   const [startDate, setStartDate] = useState("");
@@ -33,59 +32,40 @@ const AdminInvitationsPage: React.FC = () => {
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [page, setPage] = useState(0);
 
-  const { data: membership } = useQuery({
-    queryKey: ["group-membership-inv", user?.id],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("group_members")
-        .select("group_id")
-        .eq("user_id", user!.id)
-        .maybeSingle();
-      return data;
-    },
-    enabled: !!user,
-  });
-
   const { data: invitations, isLoading } = useQuery({
-    queryKey: ["admin-invitations", membership?.group_id],
+    queryKey: ["admin-invitations", groupId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("visitor_invitations")
         .select("*, profiles:invited_by(full_name, avatar_url)")
-        .eq("group_id", membership!.group_id)
+        .eq("group_id", groupId)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
-    enabled: !!membership?.group_id && hasAccess,
+    enabled: !!groupId && hasAccess,
   });
 
   const { data: members } = useQuery({
-    queryKey: ["group-members-list", membership?.group_id],
+    queryKey: ["group-members-list", groupId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("group_members")
         .select("user_id, profiles:user_id(full_name)")
-        .eq("group_id", membership!.group_id);
+        .eq("group_id", groupId);
       if (error) throw error;
       return data;
     },
-    enabled: !!membership?.group_id && hasAccess,
+    enabled: !!groupId && hasAccess,
   });
 
   const filtered = useMemo(() => {
     if (!invitations) return [];
     let result = [...invitations];
 
-    if (startDate) {
-      result = result.filter((r) => r.created_at >= startDate);
-    }
-    if (endDate) {
-      result = result.filter((r) => r.created_at <= endDate + "T23:59:59");
-    }
-    if (memberFilter) {
-      result = result.filter((r) => r.invited_by === memberFilter);
-    }
+    if (startDate) result = result.filter((r) => r.created_at >= startDate);
+    if (endDate) result = result.filter((r) => r.created_at <= endDate + "T23:59:59");
+    if (memberFilter) result = result.filter((r) => r.invited_by === memberFilter);
 
     result.sort((a, b) => {
       let va: string, vb: string;
@@ -111,12 +91,7 @@ const AdminInvitationsPage: React.FC = () => {
     else { setSortKey(key); setSortDir("asc"); }
   };
 
-  const clearFilters = () => {
-    setStartDate("");
-    setEndDate("");
-    setMemberFilter("");
-    setPage(0);
-  };
+  const clearFilters = () => { setStartDate(""); setEndDate(""); setMemberFilter(""); setPage(0); };
 
   const exportCSV = () => {
     const headers = ["Membro", "Visitante", "WhatsApp", "Profissão", "Data do Evento", "Enviado em"];
@@ -157,7 +132,6 @@ const AdminInvitationsPage: React.FC = () => {
         </Button>
       </div>
 
-      {/* Filters */}
       <Card className="bg-card border-border">
         <CardContent className="p-4">
           <div className="flex flex-wrap gap-4 items-end">
@@ -191,7 +165,6 @@ const AdminInvitationsPage: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Table */}
       {isLoading ? (
         <div className="space-y-2">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-14" />)}</div>
       ) : filtered.length === 0 ? (
@@ -242,7 +215,6 @@ const AdminInvitationsPage: React.FC = () => {
             </Table>
           </div>
 
-          {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">

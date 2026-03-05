@@ -7,25 +7,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { UserPlus, ExternalLink } from "lucide-react";
+import { UserPlus } from "lucide-react";
+import { useGroupId } from "@/hooks/useGroupId";
 
 const InvitePage: React.FC = () => {
   const { user } = useAuth();
+  const { groupId } = useGroupId();
   const [formData, setFormData] = useState({ name: "", email: "", whatsapp: "", profession: "", event_date: "" });
   const [submitted, setSubmitted] = useState(false);
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const { data: membership } = await supabase
-        .from("group_members")
-        .select("group_id")
-        .eq("user_id", user!.id)
-        .maybeSingle();
-
-      if (!membership?.group_id) throw new Error("Você precisa estar em um grupo");
-
       const { data, error } = await supabase.from("visitor_invitations").insert({
-        group_id: membership.group_id,
+        group_id: groupId,
         invited_by: user!.id,
         visitor_name: formData.name,
         visitor_email: formData.email,
@@ -37,11 +31,10 @@ const InvitePage: React.FC = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       setSubmitted(true);
       toast.success("Convite criado!");
 
-      // Build WhatsApp deep link
       const phone = formData.whatsapp.replace(/\D/g, "");
       const dateFormatted = formData.event_date
         ? new Date(formData.event_date + "T12:00:00").toLocaleDateString("pt-BR")
@@ -89,7 +82,6 @@ const InvitePage: React.FC = () => {
   return (
     <div className="space-y-6 max-w-lg">
       <h1 className="text-2xl font-display font-bold">Convidar Visitante</h1>
-
       <Card className="bg-card border-border">
         <CardContent className="p-6">
           <form onSubmit={handleSubmit} className="space-y-4">

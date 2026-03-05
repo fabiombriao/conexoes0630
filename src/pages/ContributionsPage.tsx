@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Plus, Flame, Sun, Snowflake } from "lucide-react";
-import type { Database } from "@/integrations/supabase/types";
+import { useGroupId } from "@/hooks/useGroupId";
 
 type ContributionType = "one_to_one" | "referral" | "onf";
 
@@ -38,6 +38,7 @@ const TOPICS = ["Apresentação", "GAINS", "Oportunidades", "Estratégia", "Supo
 
 const ContributionsPage: React.FC = () => {
   const { user } = useAuth();
+  const { groupId } = useGroupId();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedType, setSelectedType] = useState<ContributionType | null>(null);
@@ -59,38 +60,24 @@ const ContributionsPage: React.FC = () => {
     enabled: !!user,
   });
 
-  const { data: groupMembership } = useQuery({
-    queryKey: ["group-membership", user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("group_members")
-        .select("group_id")
-        .eq("user_id", user!.id)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!user,
-  });
-
   const { data: groupMembers } = useQuery({
-    queryKey: ["group-members-select", groupMembership?.group_id],
+    queryKey: ["group-members-select", groupId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("group_members")
         .select("user_id, profiles(full_name, avatar_url)")
-        .eq("group_id", groupMembership!.group_id);
+        .eq("group_id", groupId);
       if (error) throw error;
       return data;
     },
-    enabled: !!groupMembership?.group_id,
+    enabled: !!groupId,
   });
 
   const createMutation = useMutation({
     mutationFn: async (data: Record<string, any>) => {
       const { error } = await supabase.from("contributions").insert({
         user_id: user!.id,
-        group_id: groupMembership?.group_id || "",
+        group_id: groupId,
         type: selectedType!,
         contribution_date: data.contribution_date || new Date().toISOString().split("T")[0],
         notes: data.notes,
@@ -136,10 +123,6 @@ const ContributionsPage: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!groupMembership?.group_id) {
-      toast.error("Você precisa estar em um grupo para registrar contribuições.");
-      return;
-    }
     createMutation.mutate(formData);
   };
 
@@ -384,7 +367,9 @@ const ContributionsPage: React.FC = () => {
                     </p>
                   </div>
                 </div>
-                {c.type === "referral" && c.temperature && tempIcon(c.temperature)}
+                <div className="flex items-center gap-2">
+                  {c.type === "referral" && tempIcon(c.temperature)}
+                </div>
               </CardContent>
             </Card>
           ))}

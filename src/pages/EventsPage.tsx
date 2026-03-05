@@ -8,15 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Calendar, Plus, MapPin, Heart } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useGroupId } from "@/hooks/useGroupId";
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
   weekly_meeting: "Apresentação do Mês",
@@ -28,6 +25,7 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
 
 const EventsPage: React.FC = () => {
   const { user } = useAuth();
+  const { groupId } = useGroupId();
   const queryClient = useQueryClient();
   const { isSuperAdmin, can } = usePermissions();
   const canCreateEvents = isSuperAdmin || can("create_events");
@@ -36,34 +34,21 @@ const EventsPage: React.FC = () => {
   const [interestedEvents, setInterestedEvents] = useState<Set<string>>(new Set());
 
   const { data: events, isLoading } = useQuery({
-    queryKey: ["events", user?.id],
+    queryKey: ["events", groupId],
     queryFn: async () => {
-      const { data: membership } = await supabase
-        .from("group_members")
-        .select("group_id")
-        .eq("user_id", user!.id)
-        .maybeSingle();
-      if (!membership?.group_id) return [];
       const { data, error } = await supabase
         .from("events")
         .select("*")
-        .eq("group_id", membership.group_id)
+        .eq("group_id", groupId)
         .order("event_date", { ascending: true });
       if (error) throw error;
       return data;
     },
-    enabled: !!user,
+    enabled: !!groupId,
   });
 
   const createEventMutation = useMutation({
     mutationFn: async () => {
-      const { data: membership } = await supabase
-        .from("group_members")
-        .select("group_id")
-        .eq("user_id", user!.id)
-        .maybeSingle();
-      if (!membership?.group_id) throw new Error("Sem grupo");
-
       const { error } = await supabase.from("events").insert({
         title: formData.title,
         event_date: formData.event_date,
@@ -71,7 +56,7 @@ const EventsPage: React.FC = () => {
         location: formData.location,
         description: formData.description,
         capacity: formData.capacity ? parseInt(formData.capacity) : null,
-        group_id: membership.group_id,
+        group_id: groupId,
         created_by: user!.id,
       });
       if (error) throw error;

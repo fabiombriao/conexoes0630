@@ -1,14 +1,14 @@
 import React, { useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Trophy, Lock, History } from "lucide-react";
+import { useGroupId } from "@/hooks/useGroupId";
 
 const RankingPage: React.FC = () => {
-  const { user } = useAuth();
+  const { groupId } = useGroupId();
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
   const dayOfMonth = now.getDate();
@@ -16,67 +16,50 @@ const RankingPage: React.FC = () => {
 
   const [historyMonth, setHistoryMonth] = useState("");
 
-  const { data: membership } = useQuery({
-    queryKey: ["group-membership-ranking", user?.id],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("group_members")
-        .select("group_id")
-        .eq("user_id", user!.id)
-        .maybeSingle();
-      return data;
-    },
-    enabled: !!user,
-  });
-
-  // Current month rankings
   const { data: rankings, isLoading } = useQuery({
-    queryKey: ["monthly-rankings", currentMonth, membership?.group_id],
+    queryKey: ["monthly-rankings", currentMonth, groupId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("monthly_rankings")
         .select("*, profiles(full_name, avatar_url)")
-        .eq("group_id", membership!.group_id)
+        .eq("group_id", groupId)
         .eq("month", currentMonth)
         .order("total_points", { ascending: false });
       if (error) throw error;
       return data;
     },
-    enabled: !!membership?.group_id,
+    enabled: !!groupId,
   });
 
-  // Archived months list
   const { data: archivedMonths } = useQuery({
-    queryKey: ["archived-months", membership?.group_id],
+    queryKey: ["archived-months", groupId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("monthly_rankings")
         .select("month")
-        .eq("group_id", membership!.group_id)
+        .eq("group_id", groupId)
         .eq("is_archived", true)
         .order("month", { ascending: false });
       if (error) throw error;
-      // Deduplicate months
       const unique = [...new Set((data ?? []).map((r) => r.month))];
       return unique;
     },
-    enabled: !!membership?.group_id,
+    enabled: !!groupId,
   });
 
-  // Historical rankings for selected month
   const { data: historyRankings, isLoading: historyLoading } = useQuery({
-    queryKey: ["history-rankings", historyMonth, membership?.group_id],
+    queryKey: ["history-rankings", historyMonth, groupId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("monthly_rankings")
         .select("*, profiles(full_name, avatar_url)")
-        .eq("group_id", membership!.group_id)
+        .eq("group_id", groupId)
         .eq("month", historyMonth)
         .order("total_points", { ascending: false });
       if (error) throw error;
       return data;
     },
-    enabled: !!membership?.group_id && !!historyMonth,
+    enabled: !!groupId && !!historyMonth,
   });
 
   const formatMonth = (m: string) => {

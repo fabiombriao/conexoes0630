@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,29 +11,24 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Users, Search, Linkedin, Instagram, Globe, Phone, Calendar } from "lucide-react";
+import { useGroupId } from "@/hooks/useGroupId";
 
 const MembersPage: React.FC = () => {
-  const { user } = useAuth();
+  const { groupId } = useGroupId();
   const [search, setSearch] = useState("");
   const [selectedMember, setSelectedMember] = useState<any>(null);
 
   const { data: members, isLoading } = useQuery({
-    queryKey: ["members-list", user?.id],
+    queryKey: ["members-list", groupId],
     queryFn: async () => {
-      const { data: membership } = await supabase
-        .from("group_members")
-        .select("group_id")
-        .eq("user_id", user!.id)
-        .maybeSingle();
-      if (!membership?.group_id) return [];
       const { data, error } = await supabase
         .from("group_members")
         .select("user_id, profiles(*)")
-        .eq("group_id", membership.group_id);
+        .eq("group_id", groupId);
       if (error) throw error;
       return data;
     },
-    enabled: !!user,
+    enabled: !!groupId,
   });
 
   const filtered = members?.filter((m: any) => {
