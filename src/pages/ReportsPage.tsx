@@ -100,14 +100,14 @@ const ReportsPage: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "contribuicoes-tim.csv";
+    a.download = "contribuicoes-tin.csv";
     a.click();
   };
 
   return (
     <div className="space-y-6 max-w-6xl">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-2xl font-display font-bold">Relatórios TIM</h1>
+        <h1 className="text-2xl font-display font-bold">Relatórios TIN</h1>
         <Button variant="outline" onClick={exportCSV} className="border-border">
           Exportar CSV
         </Button>
