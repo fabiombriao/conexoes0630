@@ -128,29 +128,43 @@ export default function ManageAdminsPage() {
     enabled: isSuperAdmin,
   });
 
+  const createManagedUser = async ({
+    email,
+    password,
+    fullName,
+    role,
+    adminPermissions,
+  }: {
+    email: string;
+    password: string;
+    fullName: string;
+    role: "group_leader" | "admin";
+    adminPermissions?: AdminPermissionsData;
+  }) => {
+    const { data, error } = await supabase.functions.invoke("create-managed-user", {
+      body: {
+        email,
+        password,
+        fullName,
+        role,
+        adminPermissions: role === "group_leader" ? adminPermissions ?? DEFAULT_PERMS : null,
+      },
+    });
+
+    if (error) throw new Error(error.message || "Falha ao criar usuário");
+    if (data?.error) throw new Error(data.error);
+  };
+
   // Create admin (group_leader)
   const createAdminMutation = useMutation({
     mutationFn: async () => {
-      const { data: authData, error: authErr } = await supabase.auth.signUp({
+      await createManagedUser({
         email: newEmail,
         password: newPassword,
-        options: { data: { full_name: newName } },
+        fullName: newName,
+        role: "group_leader",
+        adminPermissions: newPerms,
       });
-      if (authErr) throw authErr;
-      const userId = authData.user?.id;
-      if (!userId) throw new Error("Falha ao criar usuário");
-
-      const { error: profErr } = await supabase
-        .from("profiles")
-        .update({ status: "active", full_name: newName, admin_permissions: newPerms as unknown as null })
-        .eq("id", userId);
-      if (profErr) throw profErr;
-
-      const { error: roleErr } = await supabase
-        .from("user_roles")
-        .update({ role: "group_leader" })
-        .eq("user_id", userId);
-      if (roleErr) throw roleErr;
     },
     onSuccess: () => {
       toast.success("Admin criado com sucesso!");
@@ -163,26 +177,12 @@ export default function ManageAdminsPage() {
   // Create superadmin
   const createSuperAdminMutation = useMutation({
     mutationFn: async () => {
-      const { data: authData, error: authErr } = await supabase.auth.signUp({
+      await createManagedUser({
         email: superEmail,
         password: superPassword,
-        options: { data: { full_name: superName } },
+        fullName: superName,
+        role: "admin",
       });
-      if (authErr) throw authErr;
-      const userId = authData.user?.id;
-      if (!userId) throw new Error("Falha ao criar usuário");
-
-      const { error: profErr } = await supabase
-        .from("profiles")
-        .update({ status: "active", full_name: superName })
-        .eq("id", userId);
-      if (profErr) throw profErr;
-
-      const { error: roleErr } = await supabase
-        .from("user_roles")
-        .update({ role: "admin" })
-        .eq("user_id", userId);
-      if (roleErr) throw roleErr;
     },
     onSuccess: () => {
       toast.success("Super Admin criado com sucesso!");
