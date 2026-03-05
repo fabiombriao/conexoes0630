@@ -7,11 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Bell, Check, Megaphone } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useNavigate } from "react-router-dom";
 import BroadcastNotificationDialog from "@/components/BroadcastNotificationDialog";
 
 const NotificationsPage: React.FC = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { isSuperAdmin, can } = usePermissions();
   const [broadcastOpen, setBroadcastOpen] = useState(false);
 
@@ -31,6 +33,17 @@ const NotificationsPage: React.FC = () => {
     enabled: !!user,
   });
 
+  const markReadMutation = useMutation({
+    mutationFn: async (notifId: string) => {
+      const { error } = await supabase
+        .from("notifications")
+        .update({ read: true })
+        .eq("id", notifId);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+  });
+
   const markAllReadMutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase
@@ -42,6 +55,15 @@ const NotificationsPage: React.FC = () => {
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
   });
+
+  const handleNotificationClick = (n: any) => {
+    if (!n.read) {
+      markReadMutation.mutate(n.id);
+    }
+    if (n.link) {
+      navigate(n.link);
+    }
+  };
 
   const unreadCount = notifications?.filter(n => !n.read).length ?? 0;
 
@@ -77,11 +99,15 @@ const NotificationsPage: React.FC = () => {
       ) : (
         <div className="space-y-2">
           {notifications.map((n) => (
-            <Card key={n.id} className={`border-border ${n.read ? "bg-card" : "bg-muted"}`}>
+            <Card
+              key={n.id}
+              className={`border-border ${n.read ? "bg-card" : "bg-muted"} ${n.link ? "cursor-pointer hover:border-primary/50 transition-colors" : ""}`}
+              onClick={() => handleNotificationClick(n)}
+            >
               <CardContent className="p-4">
                 <div className="flex items-start gap-3">
                   {!n.read && <div className="mt-1.5 h-2 w-2 rounded-full bg-primary shrink-0" />}
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="font-medium text-sm">{n.title}</p>
                     <p className="text-sm text-muted-foreground">{n.message}</p>
                     <p className="text-xs text-muted-foreground mt-1">
