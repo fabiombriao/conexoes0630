@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { Check, X, RefreshCw, ClipboardList, FlaskConical } from "lucide-react";
+import { useGroupId } from "@/hooks/useGroupId";
 
 type AttendanceStatus = "present" | "absent" | "substituted";
 
@@ -21,52 +22,40 @@ interface MemberAttendance {
 
 const AttendancePage: React.FC = () => {
   const { user } = useAuth();
+  const { groupId } = useGroupId();
   const queryClient = useQueryClient();
   const [isTest, setIsTest] = useState(false);
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().split("T")[0]);
   const [isOpen, setIsOpen] = useState(false);
   const [attendanceList, setAttendanceList] = useState<MemberAttendance[]>([]);
 
-  const { data: membership } = useQuery({
-    queryKey: ["group-membership-attendance", user?.id],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("group_members")
-        .select("group_id")
-        .eq("user_id", user!.id)
-        .maybeSingle();
-      return data;
-    },
-    enabled: !!user,
-  });
-
   const { data: members } = useQuery({
-    queryKey: ["group-members-attendance", membership?.group_id],
+    queryKey: ["group-members-attendance", groupId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("group_members")
         .select("user_id, profiles(full_name, avatar_url)")
-        .eq("group_id", membership!.group_id);
+        .eq("group_id", groupId);
       if (error) throw error;
       return data;
     },
-    enabled: !!membership?.group_id,
+    enabled: !!groupId,
   });
 
   const { data: sessions, isLoading: sessionsLoading } = useQuery({
-    queryKey: ["attendance-sessions", membership?.group_id],
+    queryKey: ["attendance-sessions", groupId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("attendance_sessions")
         .select("*")
-        .eq("group_id", membership!.group_id)
+        .eq("group_id", groupId)
         .eq("is_test", false)
         .order("session_date", { ascending: false })
         .limit(20);
       if (error) throw error;
       return data;
     },
-    enabled: !!membership?.group_id,
+    enabled: !!groupId,
   });
 
   const submitMutation = useMutation({
@@ -83,7 +72,7 @@ const AttendancePage: React.FC = () => {
         .insert({
           session_date: sessionDate,
           created_by: user!.id,
-          group_id: membership!.group_id,
+          group_id: groupId,
           status: "pending_approval" as any,
           is_test: false,
         })
@@ -176,54 +165,26 @@ const AttendancePage: React.FC = () => {
                 </div>
                 <span className="font-medium flex-1 min-w-0 truncate">{m.full_name}</span>
                 <div className="flex gap-1">
-                  <Button
-                    size="sm"
-                    variant={m.status === "present" ? "default" : "outline"}
-                    onClick={() => updateStatus(m.user_id, "present")}
-                    className="border-border text-xs"
-                  >
+                  <Button size="sm" variant={m.status === "present" ? "default" : "outline"} onClick={() => updateStatus(m.user_id, "present")} className="border-border text-xs">
                     <Check className="h-3 w-3 mr-1" /> Presente
                   </Button>
-                  <Button
-                    size="sm"
-                    variant={m.status === "absent" ? "destructive" : "outline"}
-                    onClick={() => updateStatus(m.user_id, "absent")}
-                    className="border-border text-xs"
-                  >
+                  <Button size="sm" variant={m.status === "absent" ? "destructive" : "outline"} onClick={() => updateStatus(m.user_id, "absent")} className="border-border text-xs">
                     <X className="h-3 w-3 mr-1" /> Ausente
                   </Button>
-                  <Button
-                    size="sm"
-                    variant={m.status === "substituted" ? "secondary" : "outline"}
-                    onClick={() => updateStatus(m.user_id, "substituted")}
-                    className="border-border text-xs"
-                  >
+                  <Button size="sm" variant={m.status === "substituted" ? "secondary" : "outline"} onClick={() => updateStatus(m.user_id, "substituted")} className="border-border text-xs">
                     <RefreshCw className="h-3 w-3 mr-1" /> Substituído
                   </Button>
                 </div>
                 {m.status === "substituted" && (
-                  <Input
-                    placeholder="Nome do substituto"
-                    value={m.substitute_name}
-                    onChange={(e) => updateSubstitute(m.user_id, e.target.value)}
-                    className="bg-muted border-border w-full mt-1 h-9 text-sm"
-                  />
+                  <Input placeholder="Nome do substituto" value={m.substitute_name} onChange={(e) => updateSubstitute(m.user_id, e.target.value)} className="bg-muted border-border w-full mt-1 h-9 text-sm" />
                 )}
               </CardContent>
             </Card>
           ))}
         </div>
 
-        <Button
-          onClick={() => submitMutation.mutate()}
-          disabled={submitMutation.isPending}
-          className={`w-full font-bold uppercase tracking-wider ${isTest ? "bg-warning text-warning-foreground hover:bg-warning/90" : ""}`}
-        >
-          {submitMutation.isPending
-            ? "Enviando..."
-            : isTest
-            ? "Finalizar Chamada Teste"
-            : "Finalizar e Enviar para Aprovação"}
+        <Button onClick={() => submitMutation.mutate()} disabled={submitMutation.isPending} className={`w-full font-bold uppercase tracking-wider ${isTest ? "bg-warning text-warning-foreground hover:bg-warning/90" : ""}`}>
+          {submitMutation.isPending ? "Enviando..." : isTest ? "Finalizar Chamada Teste" : "Finalizar e Enviar para Aprovação"}
         </Button>
       </div>
     );
@@ -235,21 +196,12 @@ const AttendancePage: React.FC = () => {
 
       <div className="flex gap-3 flex-wrap">
         <div className="space-y-2">
-          <Input
-            type="date"
-            value={sessionDate}
-            onChange={(e) => setSessionDate(e.target.value)}
-            className="bg-muted border-border"
-          />
+          <Input type="date" value={sessionDate} onChange={(e) => setSessionDate(e.target.value)} className="bg-muted border-border" />
         </div>
         <Button onClick={() => openAttendance(false)} className="font-bold uppercase tracking-wider">
           <ClipboardList className="h-4 w-4 mr-2" /> Abrir Chamada
         </Button>
-        <Button
-          variant="outline"
-          onClick={() => openAttendance(true)}
-          className="border-warning text-warning hover:bg-warning/10"
-        >
+        <Button variant="outline" onClick={() => openAttendance(true)} className="border-warning text-warning hover:bg-warning/10">
           <FlaskConical className="h-4 w-4 mr-2" /> 🧪 Chamada Teste
         </Button>
       </div>
