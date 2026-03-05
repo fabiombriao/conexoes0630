@@ -35,8 +35,8 @@ const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secon
 };
 
 const AdminInvitationsPage: React.FC = () => {
-  const { isSuperAdmin, can } = usePermissions();
-  const { groupId } = useGroupId();
+  const { isSuperAdmin, can, isPermissionsLoading } = usePermissions();
+  const { groupId, isLoading: groupLoading } = useGroupId();
   const hasAccess = isSuperAdmin || can("view_visitor_invitations") || can("canViewInvitations");
 
   const [startDate, setStartDate] = useState("");
@@ -128,6 +128,7 @@ const AdminInvitationsPage: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
+  if (isPermissionsLoading || groupLoading) return <div className="space-y-2">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-14" />)}</div>;
   if (!hasAccess) return <Navigate to="/" replace />;
 
   const SortableHead = ({ label, k }: { label: string; k: SortKey }) => (
