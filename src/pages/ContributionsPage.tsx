@@ -23,7 +23,7 @@ type ContributionType = "one_to_one" | "referral" | "onf";
 const TYPE_LABELS: Record<ContributionType, string> = {
   one_to_one: "T — Téte a téte",
   referral: "I — Indicações",
-  onf: "M — Negócios Fechados",
+  onf: "N — Negócios Fechados",
 };
 
 const TIN_ORDER: ContributionType[] = ["one_to_one", "referral", "onf"];
