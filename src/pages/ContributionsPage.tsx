@@ -63,12 +63,27 @@ const ContributionsPage: React.FC = () => {
   const { data: groupMembers } = useQuery({
     queryKey: ["group-members-select", groupId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // First get group member user_ids
+      const { data: members, error: membersError } = await supabase
         .from("group_members")
-        .select("user_id, profiles(full_name, avatar_url)")
+        .select("user_id")
         .eq("group_id", groupId);
-      if (error) throw error;
-      return data;
+      if (membersError) throw membersError;
+      if (!members || members.length === 0) return [];
+
+      // Then get profiles for those user_ids
+      const userIds = members.map((m) => m.user_id);
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, full_name, avatar_url")
+        .in("id", userIds);
+      if (profilesError) throw profilesError;
+
+      return (profiles || []).map((p) => ({
+        user_id: p.id,
+        full_name: p.full_name || "Membro",
+        avatar_url: p.avatar_url,
+      }));
     },
     enabled: !!groupId,
   });
