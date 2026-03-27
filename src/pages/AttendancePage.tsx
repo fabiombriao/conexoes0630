@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Check, X, RefreshCw, ClipboardList, FlaskConical } from "lucide-react";
+import { Check, X, RefreshCw, ClipboardList, FlaskConical, Users } from "lucide-react";
 import { useGroupId } from "@/hooks/useGroupId";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 type AttendanceStatus = "present" | "absent" | "substituted";
 
