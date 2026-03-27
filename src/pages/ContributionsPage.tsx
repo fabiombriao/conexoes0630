@@ -63,12 +63,27 @@ const ContributionsPage: React.FC = () => {
   const { data: groupMembers } = useQuery({
     queryKey: ["group-members-select", groupId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // First get group member user_ids
+      const { data: members, error: membersError } = await supabase
         .from("group_members")
-        .select("user_id, profiles(full_name, avatar_url)")
+        .select("user_id")
         .eq("group_id", groupId);
-      if (error) throw error;
-      return data;
+      if (membersError) throw membersError;
+      if (!members || members.length === 0) return [];
+
+      // Then get profiles for those user_ids
+      const userIds = members.map((m) => m.user_id);
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, full_name, avatar_url")
+        .in("id", userIds);
+      if (profilesError) throw profilesError;
+
+      return (profiles || []).map((p) => ({
+        user_id: p.id,
+        full_name: p.full_name || "Membro",
+        avatar_url: p.avatar_url,
+      }));
     },
     enabled: !!groupId,
   });
@@ -187,9 +202,9 @@ const ContributionsPage: React.FC = () => {
                         required
                       >
                         <option value="">Selecione...</option>
-                        {groupMembers?.filter((m: any) => m.user_id !== user?.id).map((m: any) => (
+                         {groupMembers?.filter((m) => m.user_id !== user?.id).map((m) => (
                           <option key={m.user_id} value={m.user_id}>
-                            {m.profiles?.full_name || "Membro"}
+                            {m.full_name}
                           </option>
                         ))}
                       </select>
@@ -235,9 +250,9 @@ const ContributionsPage: React.FC = () => {
                         required
                       >
                         <option value="">Selecione o membro...</option>
-                        {groupMembers?.filter((m: any) => m.user_id !== user?.id).map((m: any) => (
+                        {groupMembers?.filter((m) => m.user_id !== user?.id).map((m) => (
                           <option key={m.user_id} value={m.user_id}>
-                            {m.profiles?.full_name || "Membro"}
+                            {m.full_name}
                           </option>
                         ))}
                       </select>
@@ -302,6 +317,31 @@ const ContributionsPage: React.FC = () => {
                       <Label>Valor do negócio (R$)</Label>
                       <Input type="number" step="0.01" value={formData.business_value || ""} onChange={(e) => handleChange("business_value", e.target.value)} className="bg-muted border-border min-h-[48px] text-2xl font-display font-bold text-primary" required />
                     </div>
+                    <div className="space-y-2">
+                      <Label>Negócio fechado com membro do grupo?</Label>
+                      <div className="flex gap-2">
+                        <Button type="button" variant={formData.deal_with_member === "yes" ? "default" : "outline"} size="sm" onClick={() => handleChange("deal_with_member", "yes")} className="border-border">Sim</Button>
+                        <Button type="button" variant={formData.deal_with_member === "no" || !formData.deal_with_member ? "default" : "outline"} size="sm" onClick={() => { handleChange("deal_with_member", "no"); handleChange("referred_to", ""); }} className="border-border">Não</Button>
+                      </div>
+                    </div>
+                    {formData.deal_with_member === "yes" && (
+                      <div className="space-y-2">
+                        <Label>Membro do grupo</Label>
+                        <select
+                          value={formData.referred_to || ""}
+                          onChange={(e) => handleChange("referred_to", e.target.value)}
+                          className="flex h-10 w-full rounded-md border border-border bg-muted px-3 py-2 text-sm"
+                          required
+                        >
+                          <option value="">Selecione o membro...</option>
+                          {groupMembers?.filter((m) => m.user_id !== user?.id).map((m) => (
+                            <option key={m.user_id} value={m.user_id}>
+                              {m.full_name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                     <div className="space-y-2">
                       <Label>Tipo</Label>
                       <div className="flex gap-2">
