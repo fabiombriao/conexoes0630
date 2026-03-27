@@ -202,9 +202,9 @@ const ContributionsPage: React.FC = () => {
                         required
                       >
                         <option value="">Selecione...</option>
-                        {groupMembers?.filter((m: any) => m.user_id !== user?.id).map((m: any) => (
+                         {groupMembers?.filter((m) => m.user_id !== user?.id).map((m) => (
                           <option key={m.user_id} value={m.user_id}>
-                            {m.profiles?.full_name || "Membro"}
+                            {m.full_name}
                           </option>
                         ))}
                       </select>
