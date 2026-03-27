@@ -318,6 +318,31 @@ const ContributionsPage: React.FC = () => {
                       <Input type="number" step="0.01" value={formData.business_value || ""} onChange={(e) => handleChange("business_value", e.target.value)} className="bg-muted border-border min-h-[48px] text-2xl font-display font-bold text-primary" required />
                     </div>
                     <div className="space-y-2">
+                      <Label>Negócio fechado com membro do grupo?</Label>
+                      <div className="flex gap-2">
+                        <Button type="button" variant={formData.deal_with_member === "yes" ? "default" : "outline"} size="sm" onClick={() => handleChange("deal_with_member", "yes")} className="border-border">Sim</Button>
+                        <Button type="button" variant={formData.deal_with_member === "no" || !formData.deal_with_member ? "default" : "outline"} size="sm" onClick={() => { handleChange("deal_with_member", "no"); handleChange("referred_to", ""); }} className="border-border">Não</Button>
+                      </div>
+                    </div>
+                    {formData.deal_with_member === "yes" && (
+                      <div className="space-y-2">
+                        <Label>Membro do grupo</Label>
+                        <select
+                          value={formData.referred_to || ""}
+                          onChange={(e) => handleChange("referred_to", e.target.value)}
+                          className="flex h-10 w-full rounded-md border border-border bg-muted px-3 py-2 text-sm"
+                          required
+                        >
+                          <option value="">Selecione o membro...</option>
+                          {groupMembers?.filter((m) => m.user_id !== user?.id).map((m) => (
+                            <option key={m.user_id} value={m.user_id}>
+                              {m.full_name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                    <div className="space-y-2">
                       <Label>Tipo</Label>
                       <div className="flex gap-2">
                         {[
