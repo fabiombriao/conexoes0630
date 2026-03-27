@@ -1,15 +1,18 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Users, Search, Mail } from "lucide-react";
+import { Users, Search, ShieldCheck } from "lucide-react";
+import { PromoteMemberDialog } from "@/components/PromoteMemberDialog";
 
 const MembersPage: React.FC = () => {
   const [search, setSearch] = useState("");
