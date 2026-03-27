@@ -158,18 +158,43 @@ const AttendancePage: React.FC = () => {
     onError: (e: any) => toast.error(e.message || "Erro ao enviar"),
   });
 
+  // Fetch confirmed guests for the selected date
+  const { data: confirmedGuests } = useQuery({
+    queryKey: ["confirmed-guests-attendance", groupId, sessionDate],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("visitor_invitations")
+        .select("id, visitor_name, invited_by")
+        .eq("group_id", groupId)
+        .eq("event_date", sessionDate)
+        .eq("status", "confirmed");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!groupId,
+  });
+
   const openAttendance = (test: boolean) => {
     setIsTest(test);
     setIsOpen(true);
-    setAttendanceList(
-      (members || []).map((m: any) => ({
-        user_id: m.user_id,
-        full_name: m.profiles?.full_name || "Membro",
-        avatar_url: m.profiles?.avatar_url,
-        status: "present" as AttendanceStatus,
-        substitute_name: "",
-      }))
-    );
+    const memberList: MemberAttendance[] = (members || []).map((m: any) => ({
+      user_id: m.user_id,
+      full_name: m.profiles?.full_name || "Membro",
+      avatar_url: m.profiles?.avatar_url,
+      status: "present" as AttendanceStatus,
+      substitute_name: "",
+      isGuest: false,
+    }));
+    // Add confirmed guests as entries
+    const guestList: MemberAttendance[] = (confirmedGuests || []).map((g: any) => ({
+      user_id: `guest-${g.id}`,
+      full_name: `🎟️ ${g.visitor_name} (Convidado)`,
+      avatar_url: null,
+      status: "present" as AttendanceStatus,
+      substitute_name: "",
+      isGuest: true,
+    }));
+    setAttendanceList([...memberList, ...guestList]);
   };
 
   const updateStatus = (userId: string, status: AttendanceStatus) => {
