@@ -59,6 +59,60 @@ const AttendancePage: React.FC = () => {
     enabled: !!groupId,
   });
 
+  // Fetch attendance summary per member (approved sessions only)
+  const { data: attendanceSummary } = useQuery({
+    queryKey: ["attendance-summary", groupId],
+    queryFn: async () => {
+      // Get approved session IDs
+      const { data: approvedSessions, error: sessErr } = await supabase
+        .from("attendance_sessions")
+        .select("id")
+        .eq("group_id", groupId)
+        .eq("status", "approved")
+        .eq("is_test", false);
+      if (sessErr) throw sessErr;
+      if (!approvedSessions?.length) return [];
+
+      const sessionIds = approvedSessions.map((s) => s.id);
+      const { data: records, error: recErr } = await supabase
+        .from("attendance_records")
+        .select("member_id, status")
+        .in("session_id", sessionIds);
+      if (recErr) throw recErr;
+
+      // Aggregate by member
+      const map: Record<string, { present: number; absent: number }> = {};
+      for (const r of records || []) {
+        if (!map[r.member_id]) map[r.member_id] = { present: 0, absent: 0 };
+        if (r.status === "present" || r.status === "substituted") {
+          map[r.member_id].present++;
+        } else {
+          map[r.member_id].absent++;
+        }
+      }
+
+      // Get profile names
+      const memberIds = Object.keys(map);
+      if (!memberIds.length) return [];
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, full_name, avatar_url")
+        .in("id", memberIds);
+
+      return memberIds.map((id) => {
+        const prof = profiles?.find((p) => p.id === id);
+        return {
+          id,
+          full_name: prof?.full_name || "Membro",
+          avatar_url: prof?.avatar_url,
+          ...map[id],
+        };
+      }).sort((a, b) => b.present - a.present);
+    },
+    enabled: !!groupId,
+    staleTime: 5 * 60 * 1000,
+  });
+
   const submitMutation = useMutation({
     mutationFn: async () => {
       if (isTest) {
