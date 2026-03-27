@@ -22,14 +22,15 @@ const RankingPage: React.FC = () => {
       const { data, error } = await supabase
         .from("monthly_rankings")
         .select("*, profiles:member_id(full_name, avatar_url)")
-        .eq("group_id", groupId)
+        .eq("group_id", groupId!)
         .eq("month", currentMonth)
         .order("total_points", { ascending: false });
       if (error) throw error;
       return data;
     },
     enabled: !!groupId,
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000,
   });
 
   const { data: archivedMonths } = useQuery({
