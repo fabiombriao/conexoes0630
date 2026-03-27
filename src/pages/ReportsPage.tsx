@@ -102,6 +102,23 @@ const ReportsPage: React.FC = () => {
   const totalDeals = contributions?.filter((c) => c.type === "onf").length ?? 0;
   const totalDealValue = contributions?.filter((c) => c.type === "onf").reduce((s, c) => s + (Number(c.business_value) || 0), 0) ?? 0;
 
+  // OPT13: Count confirmed guest invitations in the date range
+  const { data: guestCount } = useQuery({
+    queryKey: ["report-guests", groupId, startDate, endDate],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("visitor_invitations")
+        .select("*", { count: "exact", head: true })
+        .eq("group_id", groupId)
+        .eq("status", "confirmed")
+        .gte("event_date", startDate)
+        .lte("event_date", endDate);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!groupId,
+  });
+
   const dealContributions = contributions?.filter((c) => c.type === "onf") ?? [];
 
   const weeklyData = React.useMemo(() => {
