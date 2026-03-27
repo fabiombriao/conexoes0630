@@ -1,19 +1,24 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Users, Search, Mail } from "lucide-react";
+import { Users, Search, ShieldCheck } from "lucide-react";
+import { PromoteMemberDialog } from "@/components/PromoteMemberDialog";
 
 const MembersPage: React.FC = () => {
   const [search, setSearch] = useState("");
   const [selectedMember, setSelectedMember] = useState<any>(null);
+  const [promoteTarget, setPromoteTarget] = useState<any>(null);
+  const { isSuperAdmin } = usePermissions();
 
   const { data: members, isLoading } = useQuery({
     queryKey: ["members-list"],
@@ -93,9 +98,34 @@ const MembersPage: React.FC = () => {
       <Dialog open={!!selectedMember} onOpenChange={() => setSelectedMember(null)}>
         <DialogContent className="bg-card border-border max-w-lg max-h-[90vh] overflow-y-auto p-0">
           <DialogTitle className="sr-only">Perfil do Membro</DialogTitle>
-          {selectedMember && <MemberProfile profile={selectedMember} />}
+          {selectedMember && (
+            <>
+              <MemberProfile profile={selectedMember} />
+              {isSuperAdmin && (
+                <div className="px-6 pb-6">
+                  <Button
+                    onClick={() => { setSelectedMember(null); setPromoteTarget(selectedMember); }}
+                    variant="outline"
+                    className="w-full border-primary text-primary hover:bg-primary/10 gap-2"
+                  >
+                    <ShieldCheck className="h-4 w-4" />
+                    Promover a Admin
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
         </DialogContent>
       </Dialog>
+
+      {promoteTarget && (
+        <PromoteMemberDialog
+          open={!!promoteTarget}
+          onOpenChange={(open) => { if (!open) setPromoteTarget(null); }}
+          memberId={promoteTarget.id}
+          memberName={promoteTarget.full_name || "Membro"}
+        />
+      )}
     </div>
   );
 };

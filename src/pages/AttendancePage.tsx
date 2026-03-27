@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Check, X, RefreshCw, ClipboardList, FlaskConical } from "lucide-react";
+import { Check, X, RefreshCw, ClipboardList, FlaskConical, Users } from "lucide-react";
 import { useGroupId } from "@/hooks/useGroupId";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 type AttendanceStatus = "present" | "absent" | "substituted";
 
@@ -56,6 +57,60 @@ const AttendancePage: React.FC = () => {
       return data;
     },
     enabled: !!groupId,
+  });
+
+  // Fetch attendance summary per member (approved sessions only)
+  const { data: attendanceSummary } = useQuery({
+    queryKey: ["attendance-summary", groupId],
+    queryFn: async () => {
+      // Get approved session IDs
+      const { data: approvedSessions, error: sessErr } = await supabase
+        .from("attendance_sessions")
+        .select("id")
+        .eq("group_id", groupId)
+        .eq("status", "approved")
+        .eq("is_test", false);
+      if (sessErr) throw sessErr;
+      if (!approvedSessions?.length) return [];
+
+      const sessionIds = approvedSessions.map((s) => s.id);
+      const { data: records, error: recErr } = await supabase
+        .from("attendance_records")
+        .select("member_id, status")
+        .in("session_id", sessionIds);
+      if (recErr) throw recErr;
+
+      // Aggregate by member
+      const map: Record<string, { present: number; absent: number }> = {};
+      for (const r of records || []) {
+        if (!map[r.member_id]) map[r.member_id] = { present: 0, absent: 0 };
+        if (r.status === "present" || r.status === "substituted") {
+          map[r.member_id].present++;
+        } else {
+          map[r.member_id].absent++;
+        }
+      }
+
+      // Get profile names
+      const memberIds = Object.keys(map);
+      if (!memberIds.length) return [];
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, full_name, avatar_url")
+        .in("id", memberIds);
+
+      return memberIds.map((id) => {
+        const prof = profiles?.find((p) => p.id === id);
+        return {
+          id,
+          full_name: prof?.full_name || "Membro",
+          avatar_url: prof?.avatar_url,
+          ...map[id],
+        };
+      }).sort((a, b) => b.present - a.present);
+    },
+    enabled: !!groupId,
+    staleTime: 5 * 60 * 1000,
   });
 
   const submitMutation = useMutation({
@@ -230,6 +285,41 @@ const AttendancePage: React.FC = () => {
           ))
         )}
       </div>
+
+      {/* Member Attendance Summary */}
+      {attendanceSummary && attendanceSummary.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="font-display font-bold text-lg flex items-center gap-2">
+            <Users className="h-5 w-5 text-primary" />
+            Frequência dos Membros
+          </h2>
+          <div className="space-y-2">
+            {attendanceSummary.map((m: any) => (
+              <Card key={m.id} className="bg-card border-border">
+                <CardContent className="p-3 flex items-center gap-3">
+                  <Avatar className="h-9 w-9 shrink-0">
+                    {m.avatar_url ? (
+                      <AvatarImage src={m.avatar_url} alt={m.full_name} />
+                    ) : null}
+                    <AvatarFallback className="bg-primary/20 text-primary text-sm font-bold">
+                      {m.full_name?.[0] || "?"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="font-medium flex-1 min-w-0 truncate text-sm">{m.full_name}</span>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="flex items-center gap-1 text-xs font-semibold text-success">
+                      <Check className="h-3.5 w-3.5" /> {m.present}
+                    </span>
+                    <span className="flex items-center gap-1 text-xs font-semibold text-destructive">
+                      <X className="h-3.5 w-3.5" /> {m.absent}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
