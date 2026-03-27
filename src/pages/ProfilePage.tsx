@@ -225,15 +225,15 @@ const ProfilePage: React.FC = () => {
         <CardHeader><CardTitle className="text-lg font-display">Links Sociais</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[
-            { key: "linkedin_url", label: "LinkedIn" },
-            { key: "instagram_url", label: "Instagram" },
-            { key: "whatsapp", label: "WhatsApp" },
-            { key: "website_url", label: "Website" },
-            { key: "video_url", label: "Vídeo comercial (URL)" },
-          ].map(({ key, label }) => (
+            { key: "whatsapp", label: "WhatsApp *", required: true },
+            { key: "instagram_url", label: "Instagram *", required: true },
+            { key: "linkedin_url", label: "LinkedIn", required: false },
+            { key: "website_url", label: "Website", required: false },
+            { key: "video_url", label: "Vídeo comercial (URL)", required: false },
+          ].map(({ key, label, required }) => (
             <div key={key} className="space-y-2">
               <Label>{label}</Label>
-              <Input value={formData[key] || ""} onChange={(e) => handleChange(key, e.target.value)} className="bg-muted border-border" />
+              <Input value={formData[key] || ""} onChange={(e) => handleChange(key, e.target.value)} className="bg-muted border-border" required={required} />
             </div>
           ))}
         </CardContent>

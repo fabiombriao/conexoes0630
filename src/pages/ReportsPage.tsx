@@ -102,6 +102,23 @@ const ReportsPage: React.FC = () => {
   const totalDeals = contributions?.filter((c) => c.type === "onf").length ?? 0;
   const totalDealValue = contributions?.filter((c) => c.type === "onf").reduce((s, c) => s + (Number(c.business_value) || 0), 0) ?? 0;
 
+  // OPT13: Count confirmed guest invitations in the date range
+  const { data: guestCount } = useQuery({
+    queryKey: ["report-guests", groupId, startDate, endDate],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("visitor_invitations")
+        .select("*", { count: "exact", head: true })
+        .eq("group_id", groupId)
+        .eq("status", "confirmed")
+        .gte("event_date", startDate)
+        .lte("event_date", endDate);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!groupId,
+  });
+
   const dealContributions = contributions?.filter((c) => c.type === "onf") ?? [];
 
   const weeklyData = React.useMemo(() => {
@@ -122,6 +139,7 @@ const ReportsPage: React.FC = () => {
     { label: "Indicações", value: totalIndications },
     { label: "Negócios Fechados", value: totalDeals },
     { label: "Total R$", value: `R$ ${totalDealValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` },
+    { label: "Convidados Presentes", value: guestCount ?? 0 },
   ];
 
   const exportCSV = () => {
@@ -164,12 +182,12 @@ const ReportsPage: React.FC = () => {
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-24" />)}
+           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-24" />)}
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             {metrics.map((m) => (
               <Card key={m.label} className="bg-card border-border card-hover-border">
                 <CardContent className="p-4 text-center">

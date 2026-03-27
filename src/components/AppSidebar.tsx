@@ -58,7 +58,7 @@ export function AppSidebar() {
 
   const navItems = [
     { title: "Dashboard", url: "/", icon: LayoutDashboard, show: true },
-    { title: "Contribuições TIN", url: "/contributions", icon: PlusCircle, show: true },
+    { title: "Minhas TIN's", url: "/contributions", icon: PlusCircle, show: true },
     { title: "Membros", url: "/members", icon: Users, show: true },
     { title: "Ranking", url: "/ranking", icon: Trophy, show: true },
     { title: "Eventos", url: "/events", icon: Calendar, show: true },
