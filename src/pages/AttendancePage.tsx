@@ -285,6 +285,41 @@ const AttendancePage: React.FC = () => {
           ))
         )}
       </div>
+
+      {/* Member Attendance Summary */}
+      {attendanceSummary && attendanceSummary.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="font-display font-bold text-lg flex items-center gap-2">
+            <Users className="h-5 w-5 text-primary" />
+            Frequência dos Membros
+          </h2>
+          <div className="space-y-2">
+            {attendanceSummary.map((m: any) => (
+              <Card key={m.id} className="bg-card border-border">
+                <CardContent className="p-3 flex items-center gap-3">
+                  <Avatar className="h-9 w-9 shrink-0">
+                    {m.avatar_url ? (
+                      <AvatarImage src={m.avatar_url} alt={m.full_name} />
+                    ) : null}
+                    <AvatarFallback className="bg-primary/20 text-primary text-sm font-bold">
+                      {m.full_name?.[0] || "?"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="font-medium flex-1 min-w-0 truncate text-sm">{m.full_name}</span>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="flex items-center gap-1 text-xs font-semibold text-success">
+                      <Check className="h-3.5 w-3.5" /> {m.present}
+                    </span>
+                    <span className="flex items-center gap-1 text-xs font-semibold text-destructive">
+                      <X className="h-3.5 w-3.5" /> {m.absent}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
