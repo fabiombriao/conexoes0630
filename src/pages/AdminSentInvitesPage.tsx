@@ -43,13 +43,26 @@ const AdminSentInvitesPage: React.FC = () => {
   const { data: invitations, isLoading } = useQuery({
     queryKey: ["admin-sent-invites", groupId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Fetch invitations and profiles separately to avoid RLS join issues
+      const { data: invites, error } = await supabase
         .from("visitor_invitations")
-        .select("*, profiles:invited_by(full_name, avatar_url)")
+        .select("*")
         .eq("group_id", groupId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data;
+
+      // Fetch inviter profiles
+      const inviterIds = [...new Set((invites ?? []).map((i) => i.invited_by))];
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, full_name, avatar_url")
+        .in("id", inviterIds);
+
+      const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
+      return (invites ?? []).map((inv) => ({
+        ...inv,
+        profiles: profileMap.get(inv.invited_by) || null,
+      }));
     },
     enabled: ready,
   });
