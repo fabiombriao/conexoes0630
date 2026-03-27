@@ -98,9 +98,34 @@ const MembersPage: React.FC = () => {
       <Dialog open={!!selectedMember} onOpenChange={() => setSelectedMember(null)}>
         <DialogContent className="bg-card border-border max-w-lg max-h-[90vh] overflow-y-auto p-0">
           <DialogTitle className="sr-only">Perfil do Membro</DialogTitle>
-          {selectedMember && <MemberProfile profile={selectedMember} />}
+          {selectedMember && (
+            <>
+              <MemberProfile profile={selectedMember} />
+              {isSuperAdmin && (
+                <div className="px-6 pb-6">
+                  <Button
+                    onClick={() => { setSelectedMember(null); setPromoteTarget(selectedMember); }}
+                    variant="outline"
+                    className="w-full border-primary text-primary hover:bg-primary/10 gap-2"
+                  >
+                    <ShieldCheck className="h-4 w-4" />
+                    Promover a Admin
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
         </DialogContent>
       </Dialog>
+
+      {promoteTarget && (
+        <PromoteMemberDialog
+          open={!!promoteTarget}
+          onOpenChange={(open) => { if (!open) setPromoteTarget(null); }}
+          memberId={promoteTarget.id}
+          memberName={promoteTarget.full_name || "Membro"}
+        />
+      )}
     </div>
   );
 };
