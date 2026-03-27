@@ -139,6 +139,7 @@ const ReportsPage: React.FC = () => {
     { label: "Indicações", value: totalIndications },
     { label: "Negócios Fechados", value: totalDeals },
     { label: "Total R$", value: `R$ ${totalDealValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` },
+    { label: "Convidados Presentes", value: guestCount ?? 0 },
   ];
 
   const exportCSV = () => {
