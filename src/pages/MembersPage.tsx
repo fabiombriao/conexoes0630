@@ -17,6 +17,8 @@ import { PromoteMemberDialog } from "@/components/PromoteMemberDialog";
 const MembersPage: React.FC = () => {
   const [search, setSearch] = useState("");
   const [selectedMember, setSelectedMember] = useState<any>(null);
+  const [promoteTarget, setPromoteTarget] = useState<any>(null);
+  const { isSuperAdmin } = usePermissions();
 
   const { data: members, isLoading } = useQuery({
     queryKey: ["members-list"],
