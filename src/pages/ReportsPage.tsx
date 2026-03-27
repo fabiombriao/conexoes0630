@@ -17,6 +17,14 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 const PRESETS = [
   { label: "Esta semana", days: 7 },
@@ -57,10 +65,8 @@ const ReportsPage: React.FC = () => {
         .order("contribution_date", { ascending: true });
 
       if (isFullReport) {
-        // Admin sees all group contributions
         query = query.eq("group_id", groupId);
       } else {
-        // Regular member sees only their own
         query = query.eq("user_id", user!.id);
       }
 
@@ -71,10 +77,32 @@ const ReportsPage: React.FC = () => {
     enabled: !!user && !!groupId,
   });
 
+  // Fetch profiles for mapping user_id -> name
+  const { data: profilesMap } = useQuery({
+    queryKey: ["report-profiles", groupId],
+    queryFn: async () => {
+      const { data: members } = await supabase
+        .from("group_members")
+        .select("user_id")
+        .eq("group_id", groupId);
+      if (!members || members.length === 0) return {};
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", members.map((m) => m.user_id));
+      const map: Record<string, string> = {};
+      profiles?.forEach((p) => { map[p.id] = p.full_name || "Membro"; });
+      return map;
+    },
+    enabled: !!groupId,
+  });
+
   const totalTT = contributions?.filter((c) => c.type === "one_to_one").length ?? 0;
   const totalIndications = contributions?.filter((c) => c.type === "referral").length ?? 0;
   const totalDeals = contributions?.filter((c) => c.type === "onf").length ?? 0;
   const totalDealValue = contributions?.filter((c) => c.type === "onf").reduce((s, c) => s + (Number(c.business_value) || 0), 0) ?? 0;
+
+  const dealContributions = contributions?.filter((c) => c.type === "onf") ?? [];
 
   const weeklyData = React.useMemo(() => {
     if (!contributions) return [];
@@ -151,6 +179,47 @@ const ReportsPage: React.FC = () => {
               </Card>
             ))}
           </div>
+
+          {/* Detailed deals table */}
+          {dealContributions.length > 0 && (
+            <Card className="bg-card border-border">
+              <CardHeader>
+                <CardTitle className="font-display text-lg">Negócios Fechados — Detalhes</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Membro Responsável</TableHead>
+                      <TableHead>Membro do Grupo</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead className="text-right">Valor (R$)</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {dealContributions.map((c) => (
+                      <TableRow key={c.id}>
+                        <TableCell>{new Date(c.contribution_date).toLocaleDateString("pt-BR")}</TableCell>
+                        <TableCell className="font-medium">{profilesMap?.[c.user_id] || "—"}</TableCell>
+                        <TableCell>{c.referred_to && profilesMap?.[c.referred_to] ? profilesMap[c.referred_to] : "Externo"}</TableCell>
+                        <TableCell>{c.is_repeat_business ? "Recorrente" : "Novo"}</TableCell>
+                        <TableCell className="text-right font-bold text-primary">
+                          R$ {Number(c.business_value || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    <TableRow className="border-t-2 border-primary/30">
+                      <TableCell colSpan={4} className="font-bold">Total</TableCell>
+                      <TableCell className="text-right font-bold text-primary">
+                        R$ {totalDealValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
 
           <Card className="bg-card border-border">
             <CardHeader><CardTitle className="font-display text-lg">Indicações por Semana</CardTitle></CardHeader>
