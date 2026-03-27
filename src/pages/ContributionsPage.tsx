@@ -150,7 +150,7 @@ const ContributionsPage: React.FC = () => {
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-display font-bold">Minhas Contribuições TIN</h1>
+        <h1 className="text-2xl font-display font-bold">Minhas TIN's</h1>
         <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) { setSelectedType(null); setFormData({}); setSelectedTopics([]); } }}>
           <DialogTrigger asChild>
             <Button className="font-bold uppercase tracking-wider">

@@ -62,7 +62,7 @@ const LoginPage: React.FC = () => {
         <div className="text-center space-y-3">
           <Logo size="lg" />
           <p className="text-muted-foreground text-sm italic">
-            O sucesso tem um horário: 06:30
+            O despertador do sucesso toca 06:30
           </p>
         </div>
 
