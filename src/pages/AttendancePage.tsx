@@ -135,12 +135,15 @@ const AttendancePage: React.FC = () => {
         .single();
       if (sessionError) throw sessionError;
 
-      const records = attendanceList.map((m) => ({
-        session_id: session.id,
-        member_id: m.user_id,
-        status: m.status as any,
-        substitute_name: m.status === "substituted" ? m.substitute_name : null,
-      }));
+      // Filter out guest entries — only real members get attendance records
+      const records = attendanceList
+        .filter((m) => !m.user_id.startsWith("guest-"))
+        .map((m) => ({
+          session_id: session.id,
+          member_id: m.user_id,
+          status: m.status as any,
+          substitute_name: m.status === "substituted" ? m.substitute_name : null,
+        }));
 
       const { error: recError } = await supabase
         .from("attendance_records")
