@@ -19,6 +19,7 @@ interface MemberAttendance {
   avatar_url: string | null;
   status: AttendanceStatus;
   substitute_name: string;
+  isGuest?: boolean;
 }
 
 const AttendancePage: React.FC = () => {
