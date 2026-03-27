@@ -182,8 +182,8 @@ const ReportsPage: React.FC = () => {
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-24" />)}
+           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-24" />)}
         </div>
       ) : (
         <>
