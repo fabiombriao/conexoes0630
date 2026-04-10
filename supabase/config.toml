@@ -1,4 +1,5 @@
-project_id = "liasvekdkautjaauryka"
+# Supabase CLI Configuration
+# Este arquivo pode ser commitado pois não contém dados sensíveis
 
 [functions.monthly-ranking-manager]
 verify_jwt = false
