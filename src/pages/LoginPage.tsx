@@ -138,7 +138,7 @@ const LoginPage: React.FC = () => {
           </button>
         </p>
 
-        <p className="text-center text-xs text-muted-foreground">
+        <p className="text-center text-sm text-muted-foreground mt-6">
           Desenvolvido por: Fábio Morales Brião
         </p>
 
