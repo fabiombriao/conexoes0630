@@ -46,6 +46,17 @@ const ProfilePage: React.FC = () => {
 
   const updateMutation = useMutation({
     mutationFn: async (data: Record<string, any>) => {
+      // Sanitizar instagram_url: extrair apenas o username
+      let instagramUsername = data.instagram_url;
+      if (instagramUsername) {
+        // Remove URL completa se existir
+        instagramUsername = instagramUsername.replace(/^https?:\/\/(www\.)?instagram\.com\//, '');
+        // Remove @ se existir
+        instagramUsername = instagramUsername.replace(/^@/, '');
+        // Remove barra no final se existir
+        instagramUsername = instagramUsername.replace(/\/$/, '');
+      }
+
       const { error } = await supabase
         .from("profiles")
         .update({
@@ -60,7 +71,7 @@ const ProfilePage: React.FC = () => {
           gains_networks: data.gains_networks,
           gains_skills: data.gains_skills,
           linkedin_url: data.linkedin_url,
-          instagram_url: data.instagram_url,
+          instagram_url: instagramUsername || null,
           whatsapp: data.whatsapp,
           website_url: data.website_url,
           video_url: data.video_url,
@@ -96,6 +107,12 @@ const ProfilePage: React.FC = () => {
   const removeKeyword = (kw: string) => {
     const current: string[] = formData.keywords || [];
     setFormData((prev) => ({ ...prev, keywords: current.filter((k) => k !== kw) }));
+  };
+
+  const handleInstagramChange = (value: string) => {
+    // Remove @ se estiver no início e espaços
+    const cleaned = value.replace(/^@\s*/, "").trim();
+    handleChange("instagram_url", cleaned);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -199,6 +216,34 @@ const ProfilePage: React.FC = () => {
       </Card>
 
       <Card className="bg-card border-border">
+        <CardHeader><CardTitle className="text-lg font-display">Links Sociais</CardTitle></CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[
+            { key: "whatsapp", label: "WhatsApp *", required: true },
+            { key: "instagram_url", label: "@ do Instagram", required: true, isInstagram: true },
+            { key: "linkedin_url", label: "LinkedIn", required: false },
+            { key: "website_url", label: "Website", required: false },
+            { key: "video_url", label: "Vídeo comercial (URL)", required: false },
+          ].map(({ key, label, required, isInstagram }) => (
+            <div key={key} className="space-y-2">
+              <Label>{label}</Label>
+              {isInstagram ? (
+                <Input
+                  value={formData[key] || ""}
+                  onChange={(e) => handleInstagramChange(e.target.value)}
+                  className="bg-muted border-border"
+                  placeholder="seu_usuario"
+                  required={required}
+                />
+              ) : (
+                <Input value={formData[key] || ""} onChange={(e) => handleChange(key, e.target.value)} className="bg-muted border-border" required={required} />
+              )}
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card className="bg-card border-border">
         <CardHeader><CardTitle className="text-lg font-display">Perfil GAINS</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           {[
@@ -216,24 +261,6 @@ const ProfilePage: React.FC = () => {
                 className="bg-muted border-border"
                 rows={2}
               />
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
-      <Card className="bg-card border-border">
-        <CardHeader><CardTitle className="text-lg font-display">Links Sociais</CardTitle></CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {[
-            { key: "whatsapp", label: "WhatsApp *", required: true },
-            { key: "instagram_url", label: "Instagram *", required: true },
-            { key: "linkedin_url", label: "LinkedIn", required: false },
-            { key: "website_url", label: "Website", required: false },
-            { key: "video_url", label: "Vídeo comercial (URL)", required: false },
-          ].map(({ key, label, required }) => (
-            <div key={key} className="space-y-2">
-              <Label>{label}</Label>
-              <Input value={formData[key] || ""} onChange={(e) => handleChange(key, e.target.value)} className="bg-muted border-border" required={required} />
             </div>
           ))}
         </CardContent>
