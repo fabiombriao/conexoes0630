@@ -138,6 +138,10 @@ const LoginPage: React.FC = () => {
           </button>
         </p>
 
+        <p className="text-center text-xs text-muted-foreground">
+          Desenvolvido por: Fábio Morales Brião
+        </p>
+
         {/* Forgot Password Modal */}
         {forgotMode && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
