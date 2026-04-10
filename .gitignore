@@ -12,6 +12,13 @@ dist
 dist-ssr
 *.local
 
+# Bun lockfiles (project uses npm)
+bun.lock
+bun.lockb
+
+# Dev logs
+dev_output.log
+
 # Environment variables (NEVER commit these!)
 .env
 .env.*
