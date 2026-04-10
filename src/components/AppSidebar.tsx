@@ -58,14 +58,14 @@ export function AppSidebar() {
 
   const navItems = [
     { title: "Dashboard", url: "/", icon: LayoutDashboard, show: true },
-    { title: "Minhas TIN's", url: "/contributions", icon: PlusCircle, show: true },
+    { title: "Minhas TRN's", url: "/contributions", icon: PlusCircle, show: true },
     { title: "Membros", url: "/members", icon: Users, show: true },
     { title: "Ranking", url: "/ranking", icon: Trophy, show: true },
     { title: "Eventos", url: "/events", icon: Calendar, show: true },
     { title: "Convidar Visitante", url: "/invite", icon: UserPlus, show: true },
     { title: "Relatórios", url: "/reports", icon: BarChart3, show: isSuperAdmin || can("view_reports") },
     { title: "Presença", url: "/attendance", icon: ClipboardList, show: isSuperAdmin || can("attendance_control") },
-    { title: "Indicações Realizadas", url: "/admin/invitations", icon: FileText, show: isSuperAdmin || can("view_visitor_invitations") },
+    { title: "Recomendações Realizadas", url: "/admin/invitations", icon: FileText, show: isSuperAdmin || can("view_visitor_invitations") },
     { title: "Convites Enviados", url: "/admin/sent-invites", icon: UserPlus, show: isSuperAdmin },
     { title: "Gerenciar Admins", url: "/admin/manage", icon: ShieldCheck, show: isSuperAdmin },
     { title: "Solicitações Pendentes", url: "/admin/pending", icon: ShieldCheck, show: isSuperAdmin },
@@ -95,11 +95,10 @@ export function AppSidebar() {
                       <NavLink
                         to={item.url}
                         end
-                        className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-colors min-h-[44px] ${
-                          isActive
+                        className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-colors min-h-[44px] ${isActive
                             ? "bg-primary text-primary-foreground font-medium"
                             : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                        }`}
+                          }`}
                         activeClassName=""
                       >
                         <div className="relative shrink-0">

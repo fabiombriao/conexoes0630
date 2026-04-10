@@ -43,7 +43,7 @@ const PERM_META: { key: keyof AdminPermissionsData; label: string; desc: string 
   { key: "canViewReports", label: "Visualizar Relatórios", desc: "Acesso aos relatórios TIN de todos os membros" },
   { key: "canManageProfiles", label: "Gerenciar Perfis", desc: "Pode editar dados de perfil de membros" },
   { key: "canSendAnnouncements", label: "Enviar Avisos", desc: "Pode enviar notificações e avisos ao grupo" },
-  { key: "canViewInvitations", label: "Ver Indicações Realizadas", desc: "Acesso ao menu de indicações de visitantes" },
+  { key: "canViewInvitations", label: "Ver Recomendações Realizadas", desc: "Acesso ao menu de indicações de visitantes" },
 ];
 
 // Map new JSON keys to the old hook keys for display
@@ -53,7 +53,7 @@ const PERM_LABEL_MAP: Record<string, string> = {
   canViewReports: "Relatórios",
   canManageProfiles: "Perfis",
   canSendAnnouncements: "Avisos",
-  canViewInvitations: "Indicações",
+  canViewInvitations: "Recomendações",
 };
 
 interface AdminRow {

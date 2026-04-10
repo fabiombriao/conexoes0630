@@ -39,6 +39,7 @@ const EventsPage: React.FC = () => {
         .from("events")
         .select("*")
         .eq("group_id", groupId)
+        .gte("event_date", new Date().toISOString())
         .order("event_date", { ascending: true });
       if (error) throw error;
       return data;

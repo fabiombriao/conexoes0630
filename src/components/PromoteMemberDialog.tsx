@@ -39,7 +39,7 @@ const PERM_META: { key: keyof AdminPermissionsData; label: string; desc: string 
   { key: "canViewReports", label: "Visualizar Relatórios", desc: "Acesso aos relatórios TIN" },
   { key: "canManageProfiles", label: "Gerenciar Perfis", desc: "Pode editar perfis de membros" },
   { key: "canSendAnnouncements", label: "Enviar Avisos", desc: "Pode enviar notificações ao grupo" },
-  { key: "canViewInvitations", label: "Ver Indicações", desc: "Acesso às indicações de visitantes" },
+  { key: "canViewInvitations", label: "Ver Recomendações", desc: "Acesso às indicações de visitantes" },
 ];
 
 interface Props {

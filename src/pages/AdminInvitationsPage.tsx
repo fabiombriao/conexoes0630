@@ -141,7 +141,7 @@ const AdminInvitationsPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <h1 className="text-2xl font-display font-bold flex items-center gap-2">
-          <FileText className="h-6 w-6 text-primary" /> Indicações Realizadas
+          <FileText className="h-6 w-6 text-primary" /> Recomendações Realizadas
         </h1>
         <Button variant="outline" onClick={exportCSV} className="gap-2" disabled={filtered.length === 0}>
           <Download className="h-4 w-4" /> Exportar CSV

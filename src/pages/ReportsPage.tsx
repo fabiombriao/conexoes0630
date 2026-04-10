@@ -136,7 +136,7 @@ const ReportsPage: React.FC = () => {
 
   const metrics = [
     { label: "Téte a téte", value: totalTT },
-    { label: "Indicações", value: totalIndications },
+    { label: "Recomendações", value: totalIndications },
     { label: "Negócios Fechados", value: totalDeals },
     { label: "Total R$", value: `R$ ${totalDealValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` },
     { label: "Convidados Presentes", value: guestCount ?? 0 },
@@ -146,7 +146,7 @@ const ReportsPage: React.FC = () => {
     if (!contributions) return;
     const header = "Data,Tipo,Detalhes,Valor\n";
     const rows = contributions.map((c) => {
-      const type = c.type === "one_to_one" ? "Téte a téte" : c.type === "referral" ? "Indicação" : "Negócio Fechado";
+      const type = c.type === "one_to_one" ? "Téte a téte" : c.type === "referral" ? "Recomendação" : "Negócio Fechado";
       const detail = c.contact_name || c.meeting_location || "";
       const val = c.business_value || "";
       return `${c.contribution_date},${type},${detail},${val}`;
@@ -240,7 +240,7 @@ const ReportsPage: React.FC = () => {
           )}
 
           <Card className="bg-card border-border">
-            <CardHeader><CardTitle className="font-display text-lg">Indicações por Semana</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="font-display text-lg">Recomendações por Semana</CardTitle></CardHeader>
             <CardContent>
               {weeklyData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>

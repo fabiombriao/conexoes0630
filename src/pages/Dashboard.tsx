@@ -15,7 +15,7 @@ const TYPE_ICONS: Record<string, React.ReactNode> = {
 
 const TYPE_LABELS: Record<string, string> = {
   one_to_one: "Téte a téte",
-  referral: "Indicação",
+  referral: "Recomendação",
   onf: "Negócio Fechado",
 };
 
@@ -113,7 +113,7 @@ const Dashboard: React.FC = () => {
   const statCards = [
     { label: "Negócios Fechados (R$)", value: `R$ ${(stats?.deals_total ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, icon: DollarSign, color: "text-success" },
     { label: "Téte a téte", value: stats?.tete_a_tetes ?? 0, icon: Users, color: "text-secondary" },
-    { label: "Indicações", value: stats?.indications ?? 0, icon: ArrowUpRight, color: "text-primary" },
+    { label: "Recomendações", value: stats?.indications ?? 0, icon: ArrowUpRight, color: "text-primary" },
     { label: "Presença", value: `${stats?.streak ?? 0} sem.`, icon: Flame, color: "text-primary" },
   ];
 
