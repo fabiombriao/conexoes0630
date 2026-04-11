@@ -39,18 +39,39 @@ Deno.serve(async (req) => {
       auth: { user: smtpUser, pass: smtpPass },
     });
 
-    // Minimal HTML template — customize in Supabase Dashboard
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-      <body style="font-family:sans-serif;padding:24px;">
-        <h2>Olá, ${userName}!</h2>
-        <p>Sua conta foi aprovada. Acesse o app:</p>
-        <p><a href="${appUrl}/login">${appUrl}/login</a></p>
-        <p>Equipe Conexões 06:30</p>
-      </body>
-      </html>
-    `;
+    const htmlContent = [
+      '<!DOCTYPE html>',
+      '<html lang="pt-BR">',
+      '<head>',
+      '  <meta charset="UTF-8">',
+      '  <meta name="viewport" content="width=device-width, initial-scale=1.0">',
+      '</head>',
+      '<body style="margin: 0; padding: 0; background-color: #121212;">',
+      '  <div style="font-family: Arial, sans-serif; background-color: #1a1a1a; color: #e0e0e0; max-width: 600px; margin: 20px auto; padding: 30px; border-radius: 8px; border: 1px solid #333333;">',
+      `    <h2 style="color: #ffffff; margin-top: 0;">Olá, <span style="color: #ff5c00;">${userName}</span>! 🎉</h2>`,
+      '    <p>Temos uma ótima notícia: a sua solicitação de cadastro foi <strong style="color: #ffffff;">aprovada</strong> com sucesso!</p>',
+      '',
+      '    <div style="background-color: #2a2a2a; padding: 20px; border-radius: 6px; border-left: 4px solid #ff5c00; margin: 25px 0;">',
+      '      <p style="margin: 0; color: #e0e0e0; font-style: italic;">',
+      '        "O despertador do sucesso toca às 06:30."',
+      '      </p>',
+      '    </div>',
+      '',
+      '    <p>Você já está liberado para acessar o painel e começar a usar todos os recursos do aplicativo.</p>',
+      '',
+      '    <p style="text-align: center; margin: 35px 0;">',
+      `      <a href="${appUrl}/login" style="display: inline-block; padding: 14px 28px; color: #ffffff; background-color: #ff5c00; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">Acessar o Aplicativo</a>`,
+      '    </p>',
+      '',
+      '    <p style="font-size: 14px; color: #a0a0a0;">Se o botão acima não funcionar, copie e cole o link abaixo no seu navegador:<br>',
+      `    <a href="${appUrl}/login" style="color: #ff5c00; word-break: break-all;">${appUrl}/login</a></p>`,
+      '',
+      '    <br>',
+      '    <p style="color: #a0a0a0;">Abraços,<br><strong style="color: #ffffff;">Equipe Conexões <span style="color: #ff5c00;">06:30</span></strong></p>',
+      '  </div>',
+      '</body>',
+      '</html>',
+    ].join('\n');
 
     const textContent = `Olá, ${userName}!\n\nSua conta foi aprovada. Acesse: ${appUrl}/login\n\nEquipe Conexões 06:30`;
 
