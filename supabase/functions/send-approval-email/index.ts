@@ -1,32 +1,76 @@
-// Follow this setup guide to integrate the Deno language server with your editor:
-// https://deno.land/manual/getting_started/setup_your_environment
-// This enables autocomplete, go to definition, etc.
+import nodemailer from "npm:nodemailer@2.7.2";
 
-// Setup type definitions for built-in Supabase Runtime APIs
-import "@supabase/functions-js/edge-runtime.d.ts"
-
-console.log("Hello from Functions!")
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
 
 Deno.serve(async (req) => {
-  const { name } = await req.json()
-  const data = {
-    message: `Hello ${name}!`,
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
   }
 
-  return new Response(
-    JSON.stringify(data),
-    { headers: { "Content-Type": "application/json" } },
-  )
-})
+  try {
+    const { userId, email, userName } = await req.json();
 
-/* To invoke locally:
+    if (!email || !userName) {
+      return new Response(
+        JSON.stringify({ error: "email and userName are required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-  1. Run `supabase start` (see: https://supabase.com/docs/reference/cli/supabase-start)
-  2. Make an HTTP request:
+    const smtpHost = Deno.env.get("MAILU_SMTP_HOST");
+    const smtpPort = parseInt(Deno.env.get("MAILU_SMTP_PORT") || "587");
+    const smtpUser = Deno.env.get("MAILU_SMTP_USER");
+    const smtpPass = Deno.env.get("MAILU_SMTP_PASS");
+    const fromEmail = Deno.env.get("MAILU_FROM_EMAIL") || smtpUser;
+    const fromName = Deno.env.get("MAILU_FROM_NAME") || "Conexões 06:30";
+    const appUrl = Deno.env.get("APP_URL") || "https://conexoes0630.vercel.app";
 
-  curl -i --location --request POST 'http://127.0.0.1:54321/functions/v1/send-approval-email' \
-    --header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0' \
-    --header 'Content-Type: application/json' \
-    --data '{"name":"Functions"}'
+    if (!smtpHost || !smtpUser || !smtpPass) {
+      throw new Error("SMTP credentials not configured");
+    }
 
-*/
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: { user: smtpUser, pass: smtpPass },
+    });
+
+    // Minimal HTML template — customize in Supabase Dashboard
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <body style="font-family:sans-serif;padding:24px;">
+        <h2>Olá, ${userName}!</h2>
+        <p>Sua conta foi aprovada. Acesse o app:</p>
+        <p><a href="${appUrl}/login">${appUrl}/login</a></p>
+        <p>Equipe Conexões 06:30</p>
+      </body>
+      </html>
+    `;
+
+    const textContent = `Olá, ${userName}!\n\nSua conta foi aprovada. Acesse: ${appUrl}/login\n\nEquipe Conexões 06:30`;
+
+    const info = await transporter.sendMail({
+      from: `"${fromName}" <${fromEmail}>`,
+      to: email,
+      subject: "Sua conta no Conexões 06:30 foi aprovada! 🎉",
+      text: textContent,
+      html: htmlContent,
+    });
+
+    return new Response(
+      JSON.stringify({ success: true, messageId: info.messageId }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error: any) {
+    console.error("Error sending email:", error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});
