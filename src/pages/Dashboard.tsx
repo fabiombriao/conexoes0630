@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DollarSign, Users, ArrowUpRight, Flame, Handshake, Send, FileCheck } from "lucide-react";
+import { DollarSign, Users, ArrowUpRight, Flame, Handshake, Send, FileCheck, Trophy } from "lucide-react";
 import { useGroupId } from "@/hooks/useGroupId";
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {
@@ -108,6 +108,26 @@ const Dashboard: React.FC = () => {
     enabled: !!user,
   });
 
+  // Monthly ranking score for current user
+  const { data: monthlyScore } = useQuery({
+    queryKey: ["monthly-ranking-user", user?.id, groupId],
+    queryFn: async () => {
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+      const { data, error } = await supabase
+        .from("monthly_rankings")
+        .select("total_points")
+        .eq("group_id", groupId!)
+        .eq("member_id", user!.id)
+        .eq("month", currentMonth)
+        .maybeSingle();
+      if (error) throw error;
+      return data?.total_points ?? 0;
+    },
+    enabled: !!user && !!groupId,
+    staleTime: 5 * 60_000,
+  });
+
   const firstName = profile?.full_name?.split(" ")[0] || "Membro";
 
   const statCards = [
@@ -115,6 +135,7 @@ const Dashboard: React.FC = () => {
     { label: "Téte a téte", value: stats?.tete_a_tetes ?? 0, icon: Users, color: "text-secondary" },
     { label: "Recomendações", value: stats?.indications ?? 0, icon: ArrowUpRight, color: "text-primary" },
     { label: "Presença", value: `${stats?.streak ?? 0} sem.`, icon: Flame, color: "text-primary" },
+    { label: "Pontuação do Mês", value: `${monthlyScore ?? 0} pts`, icon: Trophy, color: "text-warning" },
   ];
 
   const getActivityDescription = (item: any) => {
@@ -132,7 +153,7 @@ const Dashboard: React.FC = () => {
         </h1>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {statCards.map((stat) => (
           <Card key={stat.label} className="card-hover-border bg-card border-border">
             <CardContent className="p-4">

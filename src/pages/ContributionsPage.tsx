@@ -36,6 +36,11 @@ const TIN_POINTS: Record<ContributionType, number> = {
 
 const TOPICS = ["Apresentação", "GAINS", "Oportunidades", "Estratégia", "Suporte"];
 
+const getCurrentMonthKey = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+};
+
 const ContributionsPage: React.FC = () => {
   const { user } = useAuth();
   const { groupId } = useGroupId();
@@ -114,9 +119,40 @@ const ContributionsPage: React.FC = () => {
       });
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      // Atualizar ranking
+      if (groupId && user && selectedType) {
+        const monthKey = getCurrentMonthKey();
+        const pointsMap: Record<string, { tt?: number; indication?: number; deal?: number }> = {
+          one_to_one: { tt: TIN_POINTS.one_to_one },
+          referral: { indication: TIN_POINTS.referral },
+          onf: { deal: TIN_POINTS.onf },
+        };
+        const pts = pointsMap[selectedType] || {};
+
+        try {
+          await supabase.rpc("upsert_ranking_points", {
+            _group_id: groupId,
+            _member_id: user.id,
+            _month: monthKey,
+            _tt: pts.tt,
+            _indication: pts.indication,
+            _deal: pts.deal,
+          });
+
+          await supabase.rpc("recalculate_ranking_positions", {
+            _group_id: groupId,
+            _month: monthKey,
+          });
+        } catch (err: any) {
+          console.error("Erro ao atualizar ranking:", err);
+          // Não mostrar toast de erro para não atrapalhar o fluxo principal
+        }
+      }
+
       queryClient.invalidateQueries({ queryKey: ["contributions"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["monthly-rankings"] });
       setDialogOpen(false);
       setSelectedType(null);
       setFormData({});
@@ -409,6 +445,9 @@ const ContributionsPage: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   {c.type === "referral" && tempIcon(c.temperature)}
+                  <span className="text-xs font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full shrink-0">
+                    {TIN_POINTS[c.type as ContributionType] || 0} pts
+                  </span>
                 </div>
               </CardContent>
             </Card>
