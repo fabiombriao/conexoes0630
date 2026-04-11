@@ -34,14 +34,17 @@ const RankingPage: React.FC = () => {
         .in("id", userIds);
       if (profilesError) throw profilesError;
 
-      return members.map((m) => {
-        const profile = profiles?.find((p) => p.id === m.user_id);
-        return {
-          user_id: m.user_id,
-          full_name: profile?.full_name || "Membro",
-          avatar_url: profile?.avatar_url || null,
-        };
-      }).filter((m, i, arr) => arr.findIndex((x) => x.user_id === m.user_id) === i);
+      return members
+        .map((m) => {
+          const profile = profiles?.find((p) => p.id === m.user_id);
+          return {
+            user_id: m.user_id,
+            full_name: profile?.full_name,
+            avatar_url: profile?.avatar_url || null,
+          };
+        })
+        .filter((m) => m.full_name != null)
+        .filter((m, i, arr) => arr.findIndex((x) => x.user_id === m.user_id) === i);
     },
     enabled: !!groupId,
     staleTime: 5 * 60_000,
@@ -144,7 +147,7 @@ const RankingPage: React.FC = () => {
               {r.profiles?.avatar_url ? (
                 <img src={r.profiles.avatar_url} alt="" className="h-10 w-10 rounded-full object-cover" />
               ) : (
-                r.profiles?.full_name?.[0] || "?"
+                (r.profiles?.full_name?.[0] || "?").toUpperCase()
               )}
             </div>
             <div className="flex-1 min-w-0">

@@ -48,16 +48,18 @@ const AttendancePage: React.FC = () => {
         .in("id", userIds);
       if (profilesError) throw profilesError;
 
-      return membersData.map((m) => {
-        const profile = profiles?.find((p) => p.id === m.user_id);
-        return {
-          user_id: m.user_id,
-          profiles: {
-            full_name: profile?.full_name || "Membro",
-            avatar_url: profile?.avatar_url || null,
-          },
-        };
-      });
+      return membersData
+        .map((m) => {
+          const profile = profiles?.find((p) => p.id === m.user_id);
+          return {
+            user_id: m.user_id,
+            profiles: {
+              full_name: profile?.full_name,
+              avatar_url: profile?.avatar_url || null,
+            },
+          };
+        })
+        .filter((m) => m.profiles?.full_name != null);
     },
     enabled: !!groupId,
   });
@@ -118,15 +120,19 @@ const AttendancePage: React.FC = () => {
         .select("id, full_name, avatar_url")
         .in("id", memberIds);
 
-      return memberIds.map((id) => {
-        const prof = profiles?.find((p) => p.id === id);
-        return {
-          id,
-          full_name: prof?.full_name || "Membro",
-          avatar_url: prof?.avatar_url,
-          ...map[id],
-        };
-      }).sort((a, b) => b.present - a.present);
+      return memberIds
+        .map((id) => {
+          const prof = profiles?.find((p) => p.id === id);
+          if (!prof?.full_name) return null;
+          return {
+            id,
+            full_name: prof.full_name,
+            avatar_url: prof.avatar_url,
+            ...map[id],
+          };
+        })
+        .filter(Boolean)
+        .sort((a, b) => b.present - a.present);
     },
     enabled: !!groupId,
     staleTime: 5 * 60 * 1000,
@@ -201,7 +207,7 @@ const AttendancePage: React.FC = () => {
     setIsOpen(true);
     const memberList: MemberAttendance[] = (members || []).map((m: any) => ({
       user_id: m.user_id,
-      full_name: m.profiles?.full_name || "Membro",
+      full_name: m.profiles?.full_name || "",
       avatar_url: m.profiles?.avatar_url || null,
       status: "present" as AttendanceStatus,
       substitute_name: "",

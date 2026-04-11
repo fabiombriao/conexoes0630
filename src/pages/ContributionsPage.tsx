@@ -84,11 +84,13 @@ const ContributionsPage: React.FC = () => {
         .in("id", userIds);
       if (profilesError) throw profilesError;
 
-      return (profiles || []).map((p) => ({
-        user_id: p.id,
-        full_name: p.full_name || "Membro",
-        avatar_url: p.avatar_url,
-      }));
+      return (profiles || [])
+        .filter((p) => p.full_name != null)
+        .map((p) => ({
+          user_id: p.id,
+          full_name: p.full_name || "",
+          avatar_url: p.avatar_url,
+        }));
     },
     enabled: !!groupId,
   });
