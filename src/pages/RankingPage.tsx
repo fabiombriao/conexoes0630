@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,22 +16,68 @@ const RankingPage: React.FC = () => {
 
   const [historyMonth, setHistoryMonth] = useState("");
 
+  // Fetch all group members
+  const { data: groupMembers } = useQuery({
+    queryKey: ["group-members-ranking", groupId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("group_members")
+        .select("user_id, profiles!fk_group_members_profiles(full_name, avatar_url)")
+        .eq("group_id", groupId!);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!groupId,
+    staleTime: 5 * 60_000,
+  });
+
+  // Fetch monthly rankings
   const { data: rankings, isLoading } = useQuery({
     queryKey: ["monthly-rankings", currentMonth, groupId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("monthly_rankings")
-        .select("*, profiles:member_id(full_name, avatar_url)")
+        .select("*")
         .eq("group_id", groupId!)
-        .eq("month", currentMonth)
-        .order("total_points", { ascending: false });
+        .eq("month", currentMonth);
       if (error) throw error;
-      return data;
+      return data || [];
     },
     enabled: !!groupId,
     staleTime: 5 * 60_000,
     gcTime: 10 * 60_000,
   });
+
+  // Merge members with rankings (all members appear, even with 0 points)
+  const mergedRankings = useMemo(() => {
+    if (!groupMembers) return [];
+    const rankingMap = new Map((rankings || []).map((r) => [r.member_id, r]));
+    
+    const merged = groupMembers.map((m: any) => {
+      const profile = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
+      const ranking = rankingMap.get(m.user_id);
+      return {
+        id: ranking?.id || `member-${m.user_id}`,
+        member_id: m.user_id,
+        total_points: ranking?.total_points ?? 0,
+        position: ranking?.position ?? 0,
+        tt_points: ranking?.tt_points ?? 0,
+        indication_points: ranking?.indication_points ?? 0,
+        deal_points: ranking?.deal_points ?? 0,
+        presence_points: ranking?.presence_points ?? 0,
+        profiles: {
+          full_name: profile?.full_name || "Membro",
+          avatar_url: profile?.avatar_url || null,
+        },
+      };
+    });
+
+    // Sort by total_points descending
+    return merged.sort((a, b) => b.total_points - a.total_points).map((r, i) => ({
+      ...r,
+      position: i + 1,
+    }));
+  }, [groupMembers, rankings]);
 
   const { data: archivedMonths } = useQuery({
     queryKey: ["archived-months", groupId],
@@ -88,6 +134,14 @@ const RankingPage: React.FC = () => {
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-medium truncate">{r.profiles?.full_name}</p>
+              {!hidePoints && (
+                <div className="flex gap-3 text-xs text-muted-foreground mt-0.5">
+                  <span>T&T: {r.tt_points ?? 0}</span>
+                  <span>Ind: {r.indication_points ?? 0}</span>
+                  <span>Neg: {r.deal_points ?? 0}</span>
+                  <span>Pres: {r.presence_points ?? 0}</span>
+                </div>
+              )}
             </div>
             <div className="font-display font-bold text-xl text-primary shrink-0">
               {hidePoints ? <Lock className="h-5 w-5 text-muted-foreground" /> : `${r.total_points} pts`}
@@ -125,15 +179,15 @@ const RankingPage: React.FC = () => {
 
           {isLoading ? (
             <div className="space-y-2">{[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-16" />)}</div>
-          ) : !rankings || rankings.length === 0 ? (
+          ) : mergedRankings.length === 0 ? (
             <Card className="bg-card border-border">
               <CardContent className="p-8 text-center text-muted-foreground">
                 <Trophy className="h-12 w-12 mx-auto mb-3 text-primary" />
-                <p>Nenhum ranking disponível para este mês</p>
+                <p>Nenhum membro encontrado neste grupo</p>
               </CardContent>
             </Card>
           ) : (
-            <RankingList data={rankings} hidePoints={isWeek4} />
+            <RankingList data={mergedRankings} hidePoints={isWeek4} />
           )}
         </TabsContent>
 

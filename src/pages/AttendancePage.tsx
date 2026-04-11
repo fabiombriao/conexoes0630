@@ -36,7 +36,7 @@ const AttendancePage: React.FC = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("group_members")
-        .select("user_id, profiles!group_members_user_id_fkey(full_name, avatar_url)")
+        .select("user_id, profiles!fk_group_members_profiles(full_name, avatar_url)")
         .eq("group_id", groupId);
       if (error) throw error;
       return data;
@@ -181,7 +181,6 @@ const AttendancePage: React.FC = () => {
   const openAttendance = (test: boolean) => {
     setIsTest(test);
     setIsOpen(true);
-    console.log("Members data:", members);
     const memberList: MemberAttendance[] = (members || []).map((m: any) => {
       const profile = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
       return {
