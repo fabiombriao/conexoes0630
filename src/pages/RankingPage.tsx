@@ -20,12 +20,28 @@ const RankingPage: React.FC = () => {
   const { data: groupMembers } = useQuery({
     queryKey: ["group-members-ranking", groupId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: members, error: membersError } = await supabase
         .from("group_members")
-        .select("user_id, profiles!fk_group_members_profiles(full_name, avatar_url)")
+        .select("user_id")
         .eq("group_id", groupId!);
-      if (error) throw error;
-      return data || [];
+      if (membersError) throw membersError;
+      if (!members || members.length === 0) return [];
+
+      const userIds = members.map((m) => m.user_id);
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, full_name, avatar_url")
+        .in("id", userIds);
+      if (profilesError) throw profilesError;
+
+      return members.map((m) => {
+        const profile = profiles?.find((p) => p.id === m.user_id);
+        return {
+          user_id: m.user_id,
+          full_name: profile?.full_name || "Membro",
+          avatar_url: profile?.avatar_url || null,
+        };
+      });
     },
     enabled: !!groupId,
     staleTime: 5 * 60_000,
@@ -54,7 +70,6 @@ const RankingPage: React.FC = () => {
     const rankingMap = new Map((rankings || []).map((r) => [r.member_id, r]));
     
     const merged = groupMembers.map((m: any) => {
-      const profile = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
       const ranking = rankingMap.get(m.user_id);
       return {
         id: ranking?.id || `member-${m.user_id}`,
@@ -66,8 +81,8 @@ const RankingPage: React.FC = () => {
         deal_points: ranking?.deal_points ?? 0,
         presence_points: ranking?.presence_points ?? 0,
         profiles: {
-          full_name: profile?.full_name || "Membro",
-          avatar_url: profile?.avatar_url || null,
+          full_name: m.full_name,
+          avatar_url: m.avatar_url,
         },
       };
     });
