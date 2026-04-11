@@ -1,3 +1,4 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import nodemailer from "npm:nodemailer@2.7.2";
 
 const corsHeaders = {
@@ -11,11 +12,11 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { userId, email, userName } = await req.json();
+    const { userId, userName } = await req.json();
 
-    if (!email || !userName) {
+    if (!userId || !userName) {
       return new Response(
-        JSON.stringify({ error: "email and userName are required" }),
+        JSON.stringify({ error: "userId and userName are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -31,6 +32,19 @@ Deno.serve(async (req) => {
     if (!smtpHost || !smtpUser || !smtpPass) {
       throw new Error("SMTP credentials not configured");
     }
+
+    // Use service role key to access auth.users
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, serviceKey);
+
+    // Fetch email from auth.users
+    const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(userId);
+    if (authError || !authUser.user?.email) {
+      throw new Error(`Could not find email for user: ${authError?.message || "email not found"}`);
+    }
+
+    const email = authUser.user.email;
 
     const transporter = nodemailer.createTransport({
       host: smtpHost,
@@ -84,7 +98,7 @@ Deno.serve(async (req) => {
     });
 
     return new Response(
-      JSON.stringify({ success: true, messageId: info.messageId }),
+      JSON.stringify({ success: true, messageId: info.messageId, sentTo: email }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: any) {

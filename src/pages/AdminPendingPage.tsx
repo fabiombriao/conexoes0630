@@ -40,10 +40,10 @@ const AdminPendingPage: React.FC = () => {
 
   const approveAccountMutation = useMutation({
     mutationFn: async (userId: string) => {
-      // Busca email e nome do usuário antes de aprovar
+      // Busca nome do usuário antes de aprovar
       const { data: profile } = await supabase
         .from("profiles")
-        .select("email, full_name")
+        .select("full_name")
         .eq("id", userId)
         .single();
 
@@ -54,18 +54,19 @@ const AdminPendingPage: React.FC = () => {
         .eq("id", userId);
       if (error) throw error;
 
-      // Envia e-mail de boas-vindas
-      if (profile?.email && profile?.full_name) {
+      // Envia e-mail de boas-vindas (Edge Function busca email do auth.users)
+      if (profile?.full_name) {
         try {
-          const { error: emailError } = await supabase.functions.invoke("send-approval-email", {
+          const { error: emailError, data: emailData } = await supabase.functions.invoke("send-approval-email", {
             body: {
               userId,
-              email: profile.email,
               userName: profile.full_name,
             },
           });
           if (emailError) {
             console.error("Erro ao enviar e-mail:", emailError);
+          } else {
+            console.log("E-mail enviado para:", emailData?.sentTo);
           }
         } catch (emailErr) {
           console.error("Erro ao invocar Edge Function:", emailErr);
