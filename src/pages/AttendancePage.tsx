@@ -62,7 +62,8 @@ const AttendancePage: React.FC = () => {
             },
           };
         })
-        .filter((m) => m.profiles?.full_name != null);
+        .filter((m) => m.profiles?.full_name != null)
+        .filter((m, i, arr) => arr.findIndex((x) => x.user_id === m.user_id) === i);
     },
     enabled: !!groupId,
   });
@@ -211,7 +212,11 @@ const AttendancePage: React.FC = () => {
   const openAttendance = (test: boolean) => {
     setIsTest(test);
     setIsOpen(true);
-    const memberList: MemberAttendance[] = (members || []).map((m: any) => ({
+    // Deduplicate members by user_id
+    const uniqueMembers = (members || []).filter(
+      (m: any, i: number, arr: any[]) => arr.findIndex((x: any) => x.user_id === m.user_id) === i
+    );
+    const memberList: MemberAttendance[] = uniqueMembers.map((m: any) => ({
       user_id: m.user_id,
       full_name: m.profiles?.full_name || "",
       avatar_url: m.profiles?.avatar_url || null,
