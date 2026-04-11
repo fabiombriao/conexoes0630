@@ -40,15 +40,41 @@ const AdminPendingPage: React.FC = () => {
 
   const approveAccountMutation = useMutation({
     mutationFn: async (userId: string) => {
+      // Busca email e nome do usuário antes de aprovar
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("email, full_name")
+        .eq("id", userId)
+        .single();
+
+      // Aprova a conta
       const { error } = await supabase
         .from("profiles")
         .update({ status: "active" })
         .eq("id", userId);
       if (error) throw error;
+
+      // Envia e-mail de boas-vindas
+      if (profile?.email && profile?.full_name) {
+        try {
+          const { error: emailError } = await supabase.functions.invoke("send-approval-email", {
+            body: {
+              userId,
+              email: profile.email,
+              userName: profile.full_name,
+            },
+          });
+          if (emailError) {
+            console.error("Erro ao enviar e-mail:", emailError);
+          }
+        } catch (emailErr) {
+          console.error("Erro ao invocar Edge Function:", emailErr);
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pending-accounts"] });
-      toast.success("Conta aprovada!");
+      toast.success("Conta aprovada! E-mail de boas-vindas enviado.");
     },
   });
 
