@@ -31,6 +31,7 @@ const RankingPage: React.FC = () => {
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select("id, full_name, avatar_url")
+        .eq("status", "active")
         .in("id", userIds);
       if (profilesError) throw profilesError;
 
