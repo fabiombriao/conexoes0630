@@ -27,6 +27,8 @@ const MembersPage: React.FC = () => {
         .from("profiles")
         .select("id, full_name, professional_title, company_name, avatar_url, bio, keywords, linkedin_url, instagram_url, whatsapp, website_url, video_url, gains_goals, gains_accomplishments, gains_interests, gains_networks, gains_skills, business_category")
         .eq("status", "active")
+        .not("full_name", "is", null)
+        .neq("full_name", "")
         .order("full_name", { ascending: true });
       if (error) throw error;
       return data;

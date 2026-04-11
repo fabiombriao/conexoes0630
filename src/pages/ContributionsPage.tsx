@@ -82,6 +82,8 @@ const ContributionsPage: React.FC = () => {
         .from("profiles")
         .select("id, full_name, avatar_url")
         .eq("status", "active")
+        .not("full_name", "is", null)
+        .neq("full_name", "")
         .in("id", userIds);
       if (profilesError) throw profilesError;
 
