@@ -41,7 +41,7 @@ const RankingPage: React.FC = () => {
           full_name: profile?.full_name || "Membro",
           avatar_url: profile?.avatar_url || null,
         };
-      });
+      }).filter((m, i, arr) => arr.findIndex((x) => x.user_id === m.user_id) === i);
     },
     enabled: !!groupId,
     staleTime: 5 * 60_000,
