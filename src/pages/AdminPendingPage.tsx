@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -6,9 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { Check, X, ClipboardList, UserCheck } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useGroupId } from "@/hooks/useGroupId";
 
 const AdminPendingPage: React.FC = () => {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { groupId, isLoading: groupLoading } = useGroupId();
+  const hasToastedSessionsError = useRef(false);
 
   // Pending accounts
   const { data: pendingAccounts, isLoading: loadingAccounts } = useQuery({
@@ -24,58 +29,69 @@ const AdminPendingPage: React.FC = () => {
   });
 
   // Pending attendance sessions
-  const { data: pendingSessions, isLoading: loadingSessions } = useQuery({
-    queryKey: ["pending-attendance-sessions"],
+  const {
+    data: pendingSessions,
+    isLoading: loadingSessions,
+    error: pendingSessionsError,
+  } = useQuery({
+    queryKey: ["pending-attendance-sessions", groupId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: sessions, error } = await supabase
         .from("attendance_sessions")
-        .select("*, profiles:created_by(full_name)")
+        .select("id, session_date, created_by, created_at, status")
+        .eq("group_id", groupId)
         .eq("status", "pending_approval" as any)
         .eq("is_test", false)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data;
+
+      const uniqueCreatorIds = Array.from(
+        new Set((sessions ?? []).map((s: any) => s.created_by).filter(Boolean)),
+      );
+
+      let creatorNameById = new Map<string, string>();
+      if (uniqueCreatorIds.length > 0) {
+        // Best-effort: if RLS blocks profiles, we still show the list without creator names.
+        const { data: creators, error: creatorsError } = await supabase
+          .from("profiles")
+          .select("id, full_name")
+          .in("id", uniqueCreatorIds);
+        if (!creatorsError && creators) {
+          creatorNameById = new Map(
+            creators.map((p: any) => [p.id, p.full_name || "Admin"]),
+          );
+        }
+      }
+
+      return (sessions ?? []).map((s: any) => ({
+        ...s,
+        created_by_name: creatorNameById.get(s.created_by) || "Admin",
+      }));
     },
+    enabled: !!user && !groupLoading,
   });
+
+  useEffect(() => {
+    if (!pendingSessionsError) {
+      hasToastedSessionsError.current = false;
+      return;
+    }
+    if (hasToastedSessionsError.current) return;
+    hasToastedSessionsError.current = true;
+    toast.error((pendingSessionsError as any).message || "Erro ao carregar listas de presença pendentes");
+  }, [pendingSessionsError]);
 
   const approveAccountMutation = useMutation({
     mutationFn: async (userId: string) => {
-      // Busca nome do usuário antes de aprovar
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("full_name")
-        .eq("id", userId)
-        .single();
-
-      // Aprova a conta
       const { error } = await supabase
         .from("profiles")
         .update({ status: "active" })
         .eq("id", userId);
       if (error) throw error;
-
-      // Envia e-mail de boas-vindas (Edge Function busca email do auth.users)
-      if (profile?.full_name) {
-        try {
-          const { error: emailError, data: emailData } = await supabase.functions.invoke("send-approval-email", {
-            body: {
-              userId,
-              userName: profile.full_name,
-            },
-          });
-          if (emailError) {
-            console.error("Erro ao enviar e-mail:", emailError);
-          } else {
-            console.log("E-mail enviado para:", emailData?.sentTo);
-          }
-        } catch (emailErr) {
-          console.error("Erro ao invocar Edge Function:", emailErr);
-        }
-      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pending-accounts"] });
-      toast.success("Conta aprovada! E-mail de boas-vindas enviado.");
+      toast.success("Conta aprovada!");
     },
   });
 
@@ -97,12 +113,18 @@ const AdminPendingPage: React.FC = () => {
     mutationFn: async (sessionId: string) => {
       const { error } = await supabase
         .from("attendance_sessions")
-        .update({ status: "approved" as any, approved_at: new Date().toISOString() })
+        .update({
+          status: "approved" as any,
+          approved_at: new Date().toISOString(),
+          approved_by: user!.id,
+        })
         .eq("id", sessionId);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["pending-attendance-sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-attendance-sessions", groupId] });
+      queryClient.invalidateQueries({ queryKey: ["attendance-sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["attendance-summary", groupId] });
       toast.success("Lista de presença aprovada!");
     },
   });
@@ -116,7 +138,9 @@ const AdminPendingPage: React.FC = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["pending-attendance-sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-attendance-sessions", groupId] });
+      queryClient.invalidateQueries({ queryKey: ["attendance-sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["attendance-summary", groupId] });
       toast.success("Lista rejeitada");
     },
   });
@@ -163,7 +187,11 @@ const AdminPendingPage: React.FC = () => {
         <h2 className="font-display font-bold text-lg flex items-center gap-2">
           <ClipboardList className="h-5 w-5 text-primary" /> Listas de Presença
         </h2>
-        {loadingSessions ? (
+        {pendingSessionsError ? (
+          <p className="text-sm text-destructive">
+            Erro ao carregar listas pendentes: {(pendingSessionsError as any).message || "Tente novamente"}
+          </p>
+        ) : loadingSessions ? (
           <Skeleton className="h-16" />
         ) : !pendingSessions || pendingSessions.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nenhuma lista pendente</p>
@@ -176,7 +204,7 @@ const AdminPendingPage: React.FC = () => {
                     📋 Lista de Presença — {new Date(s.session_date + "T12:00:00").toLocaleDateString("pt-BR")}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Enviada por {(s.profiles as any)?.full_name || "Admin"}
+                    Enviada por {s.created_by_name || "Admin"}
                   </p>
                 </div>
                 <div className="flex gap-2 shrink-0">
