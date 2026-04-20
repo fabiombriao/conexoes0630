@@ -100,6 +100,109 @@ export type Database = {
           },
         ]
       }
+      guest_attendance_records: {
+        Row: {
+          created_at: string
+          id: string
+          invitation_id: string
+          invited_by: string
+          session_id: string
+          status: Database["public"]["Enums"]["attendance_record_status"]
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invitation_id: string
+          invited_by: string
+          session_id: string
+          status: Database["public"]["Enums"]["attendance_record_status"]
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invitation_id?: string
+          invited_by?: string
+          session_id?: string
+          status?: Database["public"]["Enums"]["attendance_record_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guest_attendance_records_invitation_id_fkey"
+            columns: ["invitation_id"]
+            isOneToOne: false
+            referencedRelation: "visitor_invitations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guest_attendance_records_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guest_attendance_records_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "guest_attendance_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      guest_attendance_sessions: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          created_by: string
+          group_id: string
+          id: string
+          is_test: boolean
+          rejection_reason: string | null
+          session_date: string
+          status: Database["public"]["Enums"]["attendance_session_status"]
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by: string
+          group_id: string
+          id?: string
+          is_test?: boolean
+          rejection_reason?: string | null
+          session_date: string
+          status?: Database["public"]["Enums"]["attendance_session_status"]
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string
+          group_id?: string
+          id?: string
+          is_test?: boolean
+          rejection_reason?: string | null
+          session_date?: string
+          status?: Database["public"]["Enums"]["attendance_session_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guest_attendance_sessions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guest_attendance_sessions_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contributions: {
         Row: {
           attendance_status:
