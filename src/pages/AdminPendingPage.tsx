@@ -28,6 +28,24 @@ type PendingSessionRow = {
   created_by_name?: string;
 };
 
+type GuestAttendancePreviewRow = {
+  invitation_id: string;
+  visitor_name: string;
+  status: "present" | "absent";
+  invited_by: string;
+  invited_by_name: string;
+  invited_by_avatar_url?: string | null;
+};
+
+type PendingGuestSessionRow = {
+  id: string;
+  session_date: string;
+  created_by: string;
+  created_at: string;
+  status: string;
+  created_by_name?: string;
+};
+
 function statusLabel(status: AttendanceRecordStatus) {
   if (status === "present") return "Presente";
   if (status === "absent") return "Ausente";
@@ -187,11 +205,150 @@ const PendingAttendanceSessionCard: React.FC<{
   );
 };
 
+const PendingGuestAttendanceSessionCard: React.FC<{
+  session: PendingGuestSessionRow;
+  onApprove: () => void;
+  onReject: () => void;
+  isApproving: boolean;
+  isRejecting: boolean;
+}> = ({ session, onApprove, onReject, isApproving, isRejecting }) => {
+  const [open, setOpen] = useState(false);
+
+  const {
+    data: previewRows,
+    isLoading: previewLoading,
+    error: previewError,
+  } = useQuery({
+    queryKey: ["guest-attendance-session-preview", session.id],
+    queryFn: async () => {
+      const { data: records, error } = await supabase
+        .from("guest_attendance_records")
+        .select("invitation_id, status, invited_by")
+        .eq("session_id", session.id);
+      if (error) throw error;
+
+      const invitationIds = Array.from(new Set((records ?? []).map((r: any) => r.invitation_id).filter(Boolean)));
+      const inviterIds = Array.from(new Set((records ?? []).map((r: any) => r.invited_by).filter(Boolean)));
+
+      const { data: invitations, error: invErr } = await supabase
+        .from("visitor_invitations")
+        .select("id, visitor_name")
+        .in("id", invitationIds);
+      if (invErr) throw invErr;
+      const invitationNameById = new Map((invitations ?? []).map((i: any) => [i.id, i.visitor_name]));
+
+      let inviterProfileById = new Map<string, { full_name?: string | null; avatar_url?: string | null }>();
+      if (inviterIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, full_name, avatar_url")
+          .in("id", inviterIds);
+        inviterProfileById = new Map(
+          (profiles ?? []).map((p: any) => [p.id, { full_name: p.full_name, avatar_url: p.avatar_url }]),
+        );
+      }
+
+      return (records ?? []).map((r: any) => {
+        const inviter = inviterProfileById.get(r.invited_by);
+        return {
+          invitation_id: r.invitation_id,
+          visitor_name: invitationNameById.get(r.invitation_id) || "Visitante",
+          status: r.status as "present" | "absent",
+          invited_by: r.invited_by,
+          invited_by_name: inviter?.full_name || "Membro",
+          invited_by_avatar_url: inviter?.avatar_url ?? null,
+        } satisfies GuestAttendancePreviewRow;
+      }).sort((a, b) => a.visitor_name.localeCompare(b.visitor_name));
+    },
+    enabled: open,
+    staleTime: 60_000,
+  });
+
+  const counts = useMemo(() => {
+    const rows = previewRows ?? [];
+    let present = 0;
+    let absent = 0;
+    for (const r of rows) {
+      if (r.status === "present") present++;
+      else absent++;
+    }
+    return { present, absent, total: rows.length };
+  }, [previewRows]);
+
+  return (
+    <Card className="bg-card border-border">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="font-medium">
+              🎟️ Lista de Presença (Convidados) — {new Date(session.session_date + "T12:00:00").toLocaleDateString("pt-BR")}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Enviada por {session.created_by_name || "Admin"}
+              {open && !previewLoading && !previewError && counts.total > 0
+                ? ` • ${counts.present} presente(s), ${counts.absent} ausente(s)`
+                : ""}
+            </p>
+          </div>
+          <div className="flex gap-2 shrink-0 flex-wrap justify-end">
+            <Button size="sm" variant="outline" className="border-border" onClick={() => setOpen((v) => !v)}>
+              {open ? <ChevronUp className="h-4 w-4 mr-1" /> : <ChevronDown className="h-4 w-4 mr-1" />}
+              {open ? "Ocultar" : "Pré-visualizar"}
+            </Button>
+            <Button size="sm" onClick={onApprove} disabled={isApproving || isRejecting}>
+              <Check className="h-4 w-4 mr-1" /> Aprovar
+            </Button>
+            <Button size="sm" variant="destructive" onClick={onReject} disabled={isApproving || isRejecting}>
+              <X className="h-4 w-4 mr-1" /> Rejeitar
+            </Button>
+          </div>
+        </div>
+
+        {open && (
+          <div className="mt-4 pt-4 border-t border-border">
+            {previewError ? (
+              <p className="text-sm text-destructive">
+                Erro ao carregar pré-visualização: {(previewError as any).message || "Tente novamente"}
+              </p>
+            ) : previewLoading ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-10" />
+                ))}
+              </div>
+            ) : !previewRows || previewRows.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum registro de presença encontrado nesta sessão.</p>
+            ) : (
+              <div className="space-y-2">
+                {previewRows.map((r) => (
+                  <div
+                    key={r.invitation_id}
+                    className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{r.visitor_name}</p>
+                      <p className="text-xs text-muted-foreground truncate">Convidado por {r.invited_by_name} • +2 pts se presente</p>
+                    </div>
+                    <span className={`text-xs font-bold shrink-0 ${statusClass(r.status as any)}`}>
+                      {r.status === "present" ? "Presente" : "Ausente"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
 const AdminPendingPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { groupId, isLoading: groupLoading } = useGroupId();
   const hasToastedSessionsError = useRef(false);
+  const hasToastedGuestSessionsError = useRef(false);
 
   // Pending accounts
   const { data: pendingAccounts, isLoading: loadingAccounts } = useQuery({
@@ -259,6 +416,57 @@ const AdminPendingPage: React.FC = () => {
     toast.error((pendingSessionsError as any).message || "Erro ao carregar listas de presença pendentes");
   }, [pendingSessionsError]);
 
+  const {
+    data: pendingGuestSessions,
+    isLoading: loadingGuestSessions,
+    error: pendingGuestSessionsError,
+  } = useQuery({
+    queryKey: ["pending-guest-attendance-sessions", groupId],
+    queryFn: async () => {
+      const { data: sessions, error } = await supabase
+        .from("guest_attendance_sessions")
+        .select("id, session_date, created_by, created_at, status")
+        .eq("group_id", groupId)
+        .eq("status", "pending_approval" as any)
+        .eq("is_test", false)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+
+      const uniqueCreatorIds = Array.from(
+        new Set((sessions ?? []).map((s: any) => s.created_by).filter(Boolean)),
+      );
+
+      let creatorNameById = new Map<string, string>();
+      if (uniqueCreatorIds.length > 0) {
+        const { data: creators, error: creatorsError } = await supabase
+          .from("profiles")
+          .select("id, full_name")
+          .in("id", uniqueCreatorIds);
+        if (!creatorsError && creators) {
+          creatorNameById = new Map(
+            creators.map((p: any) => [p.id, p.full_name || "Admin"]),
+          );
+        }
+      }
+
+      return (sessions ?? []).map((s: any) => ({
+        ...s,
+        created_by_name: creatorNameById.get(s.created_by) || "Admin",
+      })) as PendingGuestSessionRow[];
+    },
+    enabled: !!user && !groupLoading,
+  });
+
+  useEffect(() => {
+    if (!pendingGuestSessionsError) {
+      hasToastedGuestSessionsError.current = false;
+      return;
+    }
+    if (hasToastedGuestSessionsError.current) return;
+    hasToastedGuestSessionsError.current = true;
+    toast.error((pendingGuestSessionsError as any).message || "Erro ao carregar listas de convidados pendentes");
+  }, [pendingGuestSessionsError]);
+
   const approveAccountMutation = useMutation({
     mutationFn: async (userId: string) => {
       const { error } = await supabase
@@ -323,6 +531,40 @@ const AdminPendingPage: React.FC = () => {
     },
   });
 
+  const approveGuestSessionMutation = useMutation({
+    mutationFn: async (sessionId: string) => {
+      const { error } = await supabase
+        .from("guest_attendance_sessions")
+        .update({
+          status: "approved" as any,
+          approved_at: new Date().toISOString(),
+          approved_by: user!.id,
+        })
+        .eq("id", sessionId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pending-guest-attendance-sessions", groupId] });
+      queryClient.invalidateQueries({ queryKey: ["guest-attendance-sessions", groupId] });
+      toast.success("Lista de convidados aprovada!");
+    },
+  });
+
+  const rejectGuestSessionMutation = useMutation({
+    mutationFn: async (sessionId: string) => {
+      const { error } = await supabase
+        .from("guest_attendance_sessions")
+        .update({ status: "rejected" as any })
+        .eq("id", sessionId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pending-guest-attendance-sessions", groupId] });
+      queryClient.invalidateQueries({ queryKey: ["guest-attendance-sessions", groupId] });
+      toast.success("Lista de convidados rejeitada");
+    },
+  });
+
   return (
     <div className="space-y-8 max-w-3xl">
       <h1 className="text-2xl font-display font-bold">Solicitações Pendentes</h1>
@@ -382,6 +624,33 @@ const AdminPendingPage: React.FC = () => {
               onReject={() => rejectSessionMutation.mutate(s.id)}
               isApproving={approveSessionMutation.isPending}
               isRejecting={rejectSessionMutation.isPending}
+            />
+          ))
+        )}
+      </section>
+
+      {/* Pending Guest Attendance */}
+      <section className="space-y-3">
+        <h2 className="font-display font-bold text-lg flex items-center gap-2">
+          <ClipboardList className="h-5 w-5 text-primary" /> Listas de Presença (Convidados)
+        </h2>
+        {pendingGuestSessionsError ? (
+          <p className="text-sm text-destructive">
+            Erro ao carregar listas pendentes: {(pendingGuestSessionsError as any).message || "Tente novamente"}
+          </p>
+        ) : loadingGuestSessions ? (
+          <Skeleton className="h-16" />
+        ) : !pendingGuestSessions || pendingGuestSessions.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nenhuma lista pendente</p>
+        ) : (
+          pendingGuestSessions.map((s: any) => (
+            <PendingGuestAttendanceSessionCard
+              key={s.id}
+              session={s}
+              onApprove={() => approveGuestSessionMutation.mutate(s.id)}
+              onReject={() => rejectGuestSessionMutation.mutate(s.id)}
+              isApproving={approveGuestSessionMutation.isPending}
+              isRejecting={rejectGuestSessionMutation.isPending}
             />
           ))
         )}
