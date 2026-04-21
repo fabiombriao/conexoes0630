@@ -21,6 +21,7 @@ import AdminInvitationsPage from "@/pages/AdminInvitationsPage";
 import AdminSentInvitesPage from "@/pages/AdminSentInvitesPage";
 import NotificationsPage from "@/pages/NotificationsPage";
 import ProfilePage from "@/pages/ProfilePage";
+import TermoCompromissoPage from "@/pages/TermoCompromissoPage";
 import RSVPPage from "@/pages/RSVPPage";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import NotFound from "@/pages/NotFound";
@@ -38,6 +39,14 @@ const App = () => (
             <Route path="/pending" element={<PendingApprovalPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/rsvp/:token" element={<RSVPPage />} />
+            <Route
+              path="/termo-compromisso"
+              element={
+                <ProtectedRoute>
+                  <TermoCompromissoPage />
+                </ProtectedRoute>
+              }
+            />
             <Route
               element={
                 <ProtectedRoute>

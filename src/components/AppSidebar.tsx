@@ -34,6 +34,14 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 
+type NavItem = {
+  title: string;
+  url: string;
+  icon: React.ComponentType<{ className?: string }>;
+  show: boolean;
+  badge?: number;
+};
+
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
@@ -56,7 +64,7 @@ export function AppSidebar() {
     refetchInterval: 30000,
   });
 
-  const navItems = [
+  const navItems: NavItem[] = [
     { title: "Dashboard", url: "/", icon: LayoutDashboard, show: true },
     { title: "Minhas TRN's", url: "/contributions", icon: PlusCircle, show: true },
     { title: "Membros", url: "/members", icon: Users, show: true },
@@ -69,6 +77,7 @@ export function AppSidebar() {
     { title: "Convites Enviados", url: "/admin/sent-invites", icon: UserPlus, show: isSuperAdmin },
     { title: "Gerenciar Admins", url: "/admin/manage", icon: ShieldCheck, show: isSuperAdmin },
     { title: "Solicitações Pendentes", url: "/admin/pending", icon: ShieldCheck, show: isSuperAdmin },
+    { title: "Termo de compromisso", url: "/termo-compromisso", icon: FileText, show: isSuperAdmin },
     { title: "Notificações", url: "/notifications", icon: Bell, show: true, badge: unreadCount },
     { title: "Meu Perfil", url: "/profile", icon: User, show: true },
   ];
@@ -88,7 +97,7 @@ export function AppSidebar() {
             <SidebarMenu>
               {navItems.filter((i) => i.show).map((item) => {
                 const isActive = location.pathname === item.url;
-                const badge = (item as any).badge;
+                const badge = item.badge;
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild>

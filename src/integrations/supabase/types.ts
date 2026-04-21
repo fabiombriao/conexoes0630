@@ -672,6 +672,101 @@ export type Database = {
           },
         ]
       }
+      term_commitment_versions: {
+        Row: {
+          content_markdown: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          title: string
+          version: number
+        }
+        Insert: {
+          content_markdown: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          title: string
+          version: number
+        }
+        Update: {
+          content_markdown?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          title?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "term_commitment_versions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      term_commitments: {
+        Row: {
+          cpf: string | null
+          created_at: string
+          declined_at: string | null
+          id: string
+          member_id: string
+          pdf_path: string | null
+          sent_at: string | null
+          signed_at: string | null
+          status: Database["public"]["Enums"]["term_commitment_status"]
+          term_version_id: string
+          updated_at: string
+        }
+        Insert: {
+          cpf?: string | null
+          created_at?: string
+          declined_at?: string | null
+          id?: string
+          member_id: string
+          pdf_path?: string | null
+          sent_at?: string | null
+          signed_at?: string | null
+          status?: Database["public"]["Enums"]["term_commitment_status"]
+          term_version_id: string
+          updated_at?: string
+        }
+        Update: {
+          cpf?: string | null
+          created_at?: string
+          declined_at?: string | null
+          id?: string
+          member_id?: string
+          pdf_path?: string | null
+          sent_at?: string | null
+          signed_at?: string | null
+          status?: Database["public"]["Enums"]["term_commitment_status"]
+          term_version_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "term_commitments_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "term_commitments_term_version_id_fkey"
+            columns: ["term_version_id"]
+            isOneToOne: false
+            referencedRelation: "term_commitment_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           admin_permissions: Json | null
@@ -872,6 +967,13 @@ export type Database = {
         }
         Returns: undefined
       }
+      send_term_commitment_notification: {
+        Args: {
+          _member_id: string
+          _term_version_id: string
+        }
+        Returns: undefined
+      }
       recalculate_ranking_positions: {
         Args: { _group_id: string; _month: string }
         Returns: undefined
@@ -914,6 +1016,7 @@ export type Database = {
       referral_action: "called" | "scheduled" | "email" | "in_person"
       referral_status: "new" | "pending" | "closed_won" | "closed_lost"
       referral_temperature: "hot" | "warm" | "cold"
+      term_commitment_status: "pending" | "sent" | "signed" | "declined"
       ueg_type:
         | "article"
         | "podcast"
