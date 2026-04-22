@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ShieldCheck, Plus, Pencil, Trash2 } from "lucide-react";
+import { sortByText } from "@/lib/sortByText";
 
 interface AdminPermissionsData {
   canControlAttendance: boolean;
@@ -101,7 +102,7 @@ export default function ManageAdminsPage() {
         .select("id, full_name, admin_permissions")
         .in("id", ids);
       if (profErr) throw profErr;
-      return (profiles ?? []) as unknown as AdminRow[];
+      return sortByText((profiles ?? []) as unknown as AdminRow[], (p) => p.full_name || "");
     },
     enabled: isSuperAdmin,
   });
@@ -123,7 +124,7 @@ export default function ManageAdminsPage() {
         .select("id, full_name")
         .in("id", ids);
       if (profErr) throw profErr;
-      return (profiles ?? []) as unknown as AdminRow[];
+      return sortByText((profiles ?? []) as unknown as AdminRow[], (p) => p.full_name || "");
     },
     enabled: isSuperAdmin,
   });

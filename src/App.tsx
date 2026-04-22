@@ -14,6 +14,7 @@ import MembersPage from "@/pages/MembersPage";
 import EventsPage from "@/pages/EventsPage";
 import InvitePage from "@/pages/InvitePage";
 import RankingPage from "@/pages/RankingPage";
+import RankingRealtimePage from "@/pages/RankingRealtimePage";
 import AttendancePage from "@/pages/AttendancePage";
 import AdminPendingPage from "@/pages/AdminPendingPage";
 import ManageAdminsPage from "@/pages/ManageAdminsPage";
@@ -61,6 +62,7 @@ const App = () => (
               <Route path="/events" element={<EventsPage />} />
               <Route path="/invite" element={<InvitePage />} />
               <Route path="/ranking" element={<RankingPage />} />
+              <Route path="/ranking-real-time" element={<RankingRealtimePage />} />
               <Route path="/attendance" element={<AttendancePage />} />
               <Route path="/admin/pending" element={<AdminPendingPage />} />
               <Route path="/admin/manage" element={<ManageAdminsPage />} />

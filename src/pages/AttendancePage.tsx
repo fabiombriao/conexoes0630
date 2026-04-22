@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { Check, X, RefreshCw, ClipboardList, FlaskConical, Users } from "lucide-react";
 import { useGroupId } from "@/hooks/useGroupId";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { sortByText } from "@/lib/sortByText";
 
 type AttendanceStatus = "present" | "absent" | "substituted";
 type GuestAttendanceStatus = "present" | "absent";
@@ -30,6 +31,14 @@ interface GuestAttendance {
   invited_by_name: string;
   invited_by_avatar_url: string | null;
   status: GuestAttendanceStatus;
+}
+
+interface AttendanceSummaryItem {
+  id: string;
+  full_name: string;
+  avatar_url: string | null;
+  present: number;
+  absent: number;
 }
 
 const AttendancePage: React.FC = () => {
@@ -63,7 +72,8 @@ const AttendancePage: React.FC = () => {
         .in("id", userIds);
       if (profilesError) throw profilesError;
 
-      return membersData
+      return sortByText(
+        membersData
         .map((m) => {
           const profile = profiles?.find((p) => p.id === m.user_id);
           return {
@@ -75,7 +85,9 @@ const AttendancePage: React.FC = () => {
           };
         })
         .filter((m) => m.profiles?.full_name != null)
-        .filter((m, i, arr) => arr.findIndex((x) => x.user_id === m.user_id) === i);
+        .filter((m, i, arr) => arr.findIndex((x) => x.user_id === m.user_id) === i),
+        (m) => m.profiles?.full_name || "",
+      );
     },
     enabled: !!groupId,
   });
@@ -161,7 +173,7 @@ const AttendancePage: React.FC = () => {
         .neq("full_name", "")
         .in("id", memberIds);
 
-      return memberIds
+      const summary = memberIds
         .map((id) => {
           const prof = profiles?.find((p) => p.id === id);
           if (!prof?.full_name) return null;
@@ -172,8 +184,9 @@ const AttendancePage: React.FC = () => {
             ...map[id],
           };
         })
-        .filter(Boolean)
-        .sort((a, b) => b.present - a.present);
+        .filter(Boolean) as AttendanceSummaryItem[];
+
+      return sortByText(summary, (m) => m.full_name);
     },
     enabled: !!groupId,
     staleTime: 5 * 60 * 1000,

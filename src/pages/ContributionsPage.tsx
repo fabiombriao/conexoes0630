@@ -13,12 +13,45 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Plus, Flame, Sun, Snowflake } from "lucide-react";
 import { useGroupId } from "@/hooks/useGroupId";
+import { sortByText } from "@/lib/sortByText";
 
 type ContributionType = "one_to_one" | "referral" | "onf";
+
+type ContributionRow = {
+  id: string;
+  user_id: string;
+  group_id: string;
+  type: ContributionType;
+  contribution_date: string;
+  notes: string | null;
+  contact_name: string | null;
+  contact_phone: string | null;
+  contact_email: string | null;
+  referral_category: string | null;
+  temperature: string | null;
+  referral_action: string | null;
+  referral_description: string | null;
+  referred_to: string | null;
+  business_value: number | null;
+  is_repeat_business: boolean | null;
+  closing_date: string | null;
+  meeting_location: string | null;
+  meeting_topics: string[] | null;
+  meeting_member_id: string | null;
+  meeting_date: string | null;
+  created_at: string;
+};
+
+type GroupMemberOption = {
+  user_id: string;
+  full_name: string;
+  avatar_url: string | null;
+};
 
 const TYPE_LABELS: Record<ContributionType, string> = {
   one_to_one: "T — Téte a téte",
@@ -49,13 +82,14 @@ const ContributionsPage: React.FC = () => {
   const [selectedType, setSelectedType] = useState<ContributionType | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
+  const [previewItem, setPreviewItem] = useState<ContributionRow | null>(null);
 
-  const { data: contributions, isLoading } = useQuery({
+  const { data: contributions, isLoading } = useQuery<ContributionRow[]>({
     queryKey: ["contributions", user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("contributions")
-        .select("*")
+        .select("id, user_id, group_id, type, contribution_date, notes, contact_name, contact_phone, contact_email, referral_category, temperature, referral_action, referral_description, referred_to, business_value, is_repeat_business, closing_date, meeting_location, meeting_topics, meeting_member_id, meeting_date, created_at")
         .eq("user_id", user!.id)
         .in("type", ["one_to_one", "referral", "onf"])
         .order("contribution_date", { ascending: false });
@@ -65,7 +99,7 @@ const ContributionsPage: React.FC = () => {
     enabled: !!user,
   });
 
-  const { data: groupMembers } = useQuery({
+  const { data: groupMembers } = useQuery<GroupMemberOption[]>({
     queryKey: ["group-members-select", groupId],
     queryFn: async () => {
       // First get group member user_ids
@@ -97,6 +131,11 @@ const ContributionsPage: React.FC = () => {
     },
     enabled: !!groupId,
   });
+
+  const sortedGroupMembers = sortByText(
+    (groupMembers ?? []).filter((m) => m.user_id !== user?.id),
+    (m) => m.full_name,
+  );
 
   const createMutation = useMutation({
     mutationFn: async (data: Record<string, any>) => {
@@ -189,10 +228,23 @@ const ContributionsPage: React.FC = () => {
     return <Snowflake className="h-4 w-4 text-blue-400" />;
   };
 
+  const getMemberName = (memberId: string | null) =>
+    sortedGroupMembers.find((m) => m.user_id === memberId)?.full_name || null;
+
+  const getContributionTitle = (c: ContributionRow) => {
+    if (c.type === "one_to_one") {
+      return getMemberName(c.meeting_member_id) || c.meeting_location || "Téte a téte";
+    }
+    if (c.type === "referral") {
+      return c.contact_name || "Recomendação";
+    }
+    return `R$ ${Number(c.business_value || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+  };
+
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-display font-bold">Minhas TIN's</h1>
+        <h1 className="text-2xl font-display font-bold">Minhas TRN's</h1>
         <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) { setSelectedType(null); setFormData({}); setSelectedTopics([]); } }}>
           <DialogTrigger asChild>
             <Button className="font-bold uppercase tracking-wider">
@@ -202,7 +254,7 @@ const ContributionsPage: React.FC = () => {
           </DialogTrigger>
           <DialogContent className="bg-popover border-border max-h-[90vh] overflow-y-auto sm:max-w-lg">
             <DialogHeader>
-              <DialogTitle className="font-display">Nova Contribuição TIN</DialogTitle>
+              <DialogTitle className="font-display">Nova Contribuição TRN</DialogTitle>
             </DialogHeader>
 
             {!selectedType ? (
@@ -244,7 +296,7 @@ const ContributionsPage: React.FC = () => {
                         required
                       >
                         <option value="">Selecione...</option>
-                         {groupMembers?.filter((m) => m.user_id !== user?.id).map((m) => (
+                         {sortedGroupMembers.map((m) => (
                           <option key={m.user_id} value={m.user_id}>
                             {m.full_name}
                           </option>
@@ -292,7 +344,7 @@ const ContributionsPage: React.FC = () => {
                         required
                       >
                         <option value="">Selecione o membro...</option>
-                        {groupMembers?.filter((m) => m.user_id !== user?.id).map((m) => (
+                        {sortedGroupMembers.map((m) => (
                           <option key={m.user_id} value={m.user_id}>
                             {m.full_name}
                           </option>
@@ -376,7 +428,7 @@ const ContributionsPage: React.FC = () => {
                           required
                         >
                           <option value="">Selecione o membro...</option>
-                          {groupMembers?.filter((m) => m.user_id !== user?.id).map((m) => (
+                          {sortedGroupMembers.map((m) => (
                             <option key={m.user_id} value={m.user_id}>
                               {m.full_name}
                             </option>
@@ -432,7 +484,19 @@ const ContributionsPage: React.FC = () => {
       ) : (
         <div className="space-y-2">
           {contributions?.map((c) => (
-            <Card key={c.id} className="bg-card border-border card-hover-border">
+            <Card
+              key={c.id}
+              className="bg-card border-border card-hover-border cursor-pointer"
+              onClick={() => setPreviewItem(c)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setPreviewItem(c);
+                }
+              }}
+            >
               <CardContent className="p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className="text-xs font-bold uppercase text-primary bg-primary/10 px-2 py-1 rounded">
@@ -440,9 +504,7 @@ const ContributionsPage: React.FC = () => {
                   </span>
                   <div>
                     <p className="text-sm font-medium">
-                      {c.type === "referral" && c.contact_name}
-                      {c.type === "onf" && `R$ ${Number(c.business_value || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
-                      {c.type === "one_to_one" && (c.meeting_location || "Téte a téte")}
+                      {getContributionTitle(c)}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {new Date(c.contribution_date).toLocaleDateString("pt-BR")}
@@ -460,6 +522,136 @@ const ContributionsPage: React.FC = () => {
           ))}
         </div>
       )}
+
+      <Dialog open={!!previewItem} onOpenChange={(open) => !open && setPreviewItem(null)}>
+        <DialogContent className="bg-popover border-border max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <span className="text-xs font-bold uppercase text-primary bg-primary/10 px-2 py-1 rounded">
+                {previewItem ? (TYPE_LABELS[previewItem.type] || previewItem.type) : ""}
+              </span>
+              <span>Detalhes da contribuição</span>
+            </DialogTitle>
+            <DialogDescription>
+              Visualização do que foi preenchido no registro.
+            </DialogDescription>
+          </DialogHeader>
+
+          {previewItem && (
+            <div className="space-y-5">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Data</Label>
+                  <p className="text-sm">{new Date(previewItem.contribution_date).toLocaleDateString("pt-BR")}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Tipo</Label>
+                  <p className="text-sm">{TYPE_LABELS[previewItem.type]}</p>
+                </div>
+              </div>
+
+              {previewItem.type === "one_to_one" && (
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Com quem foi</Label>
+                    <p className="text-sm font-medium">
+                      {getMemberName(previewItem.meeting_member_id) || previewItem.meeting_location || "Téte a téte"}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Local</Label>
+                    <p className="text-sm">{previewItem.meeting_location || "—"}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Data da reunião</Label>
+                    <p className="text-sm">{previewItem.meeting_date ? new Date(previewItem.meeting_date).toLocaleDateString("pt-BR") : "—"}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Tópicos</Label>
+                    <p className="text-sm">{previewItem.meeting_topics?.length ? previewItem.meeting_topics.join(", ") : "—"}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Observações</Label>
+                    <p className="text-sm whitespace-pre-wrap">{previewItem.notes || "—"}</p>
+                  </div>
+                </div>
+              )}
+
+              {previewItem.type === "referral" && (
+                <div className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Indicado para</Label>
+                      <p className="text-sm font-medium">
+                        {getMemberName(previewItem.referred_to) || "Membro do grupo"}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Temperatura</Label>
+                      <p className="text-sm">{previewItem.temperature || "—"}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Contato</Label>
+                    <p className="text-sm">{previewItem.contact_name || "—"}</p>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Telefone</Label>
+                      <p className="text-sm">{previewItem.contact_phone || "—"}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">E-mail</Label>
+                      <p className="text-sm">{previewItem.contact_email || "—"}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Descrição</Label>
+                    <p className="text-sm whitespace-pre-wrap">{previewItem.referral_description || "—"}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Observações</Label>
+                    <p className="text-sm whitespace-pre-wrap">{previewItem.notes || "—"}</p>
+                  </div>
+                </div>
+              )}
+
+              {previewItem.type === "onf" && (
+                <div className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Valor</Label>
+                      <p className="text-sm font-medium">
+                        R$ {Number(previewItem.business_value || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Tipo</Label>
+                      <p className="text-sm">{previewItem.is_repeat_business ? "Negócio recorrente" : "Novo negócio"}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Fechado com</Label>
+                    <p className="text-sm">
+                      {previewItem.referred_to
+                        ? getMemberName(previewItem.referred_to) || "Membro do grupo"
+                        : "Cliente externo"}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Data do fechamento</Label>
+                    <p className="text-sm">{previewItem.closing_date ? new Date(previewItem.closing_date).toLocaleDateString("pt-BR") : "—"}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Observações</Label>
+                    <p className="text-sm whitespace-pre-wrap">{previewItem.notes || "—"}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Trophy, Lock, History } from "lucide-react";
 import { useGroupId } from "@/hooks/useGroupId";
+import { sortByText } from "@/lib/sortByText";
 
 const RankingPage: React.FC = () => {
   const { groupId } = useGroupId();
@@ -37,7 +38,8 @@ const RankingPage: React.FC = () => {
         .in("id", userIds);
       if (profilesError) throw profilesError;
 
-      return members
+      return sortByText(
+        members
         .map((m) => {
           const profile = profiles?.find((p) => p.id === m.user_id);
           return {
@@ -47,7 +49,9 @@ const RankingPage: React.FC = () => {
           };
         })
         .filter((m) => m.full_name != null)
-        .filter((m, i, arr) => arr.findIndex((x) => x.user_id === m.user_id) === i);
+        .filter((m, i, arr) => arr.findIndex((x) => x.user_id === m.user_id) === i),
+        (m) => m.full_name,
+      );
     },
     enabled: !!groupId,
     staleTime: 5 * 60_000,
