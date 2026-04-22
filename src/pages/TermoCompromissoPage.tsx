@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { TermCommitmentRow } from "@/hooks/useTermCommitment";
+import { buildTermCommitmentPdf } from "@/lib/termCommitmentPdf";
 
 type MemberRow = {
   id: string;
@@ -53,6 +54,8 @@ const formatCpf = (value: string) => {
     .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
     .replace(/\.(\d{3})(\d)/, ".$1-$2");
 };
+
+const normalizeCpf = (value: string) => value.replace(/\D/g, "").slice(0, 11);
 
 const statusForRow = (commitment?: TermCommitmentRow | null) => commitment?.status ?? "pending";
 
@@ -242,16 +245,42 @@ const TermoCompromissoPage: React.FC = () => {
     mutationFn: async () => {
       if (!termQuery.activeVersion?.id) throw new Error("Versão do termo indisponível");
       if (!signatureDataUrl) throw new Error("Assinatura obrigatória");
-      const { error, data } = await supabase.functions.invoke("term-commitment-sign", {
-        body: {
-          action: "sign",
-          termVersionId: termQuery.activeVersion.id,
-          cpf,
-          signatureDataUrl,
-        },
+
+      const cpfDigits = normalizeCpf(cpf);
+      const signedAt = new Date().toISOString();
+      const signerName = user?.user_metadata?.full_name || "Membro";
+      const pdfBytes = await buildTermCommitmentPdf({
+        title: termQuery.activeVersion.title,
+        contentMarkdown: termQuery.activeVersion.content_markdown,
+        signerName,
+        cpf,
+        signatureDataUrl,
+        signedAt,
       });
-      if (error) throw error;
-      return data;
+
+      const pdfPath = `${user!.id}/${termQuery.activeVersion.id}.pdf`;
+      const { error: uploadError } = await supabase.storage.from(BUCKET).upload(pdfPath, pdfBytes, {
+        contentType: "application/pdf",
+        upsert: true,
+      });
+      if (uploadError) throw uploadError;
+
+      const { error: upsertError } = await supabase
+        .from("term_commitments")
+        .upsert(
+          {
+            term_version_id: termQuery.activeVersion.id,
+            member_id: user!.id,
+            status: "signed",
+            cpf: cpfDigits,
+            pdf_path: pdfPath,
+            sent_at: termQuery.commitment?.sent_at ?? null,
+            signed_at: signedAt,
+            declined_at: null,
+          },
+          { onConflict: "term_version_id,member_id" },
+        );
+      if (upsertError) throw upsertError;
     },
     onSuccess: async () => {
       toast.success("Termo assinado com sucesso");
@@ -273,15 +302,33 @@ const TermoCompromissoPage: React.FC = () => {
   const declineMutation = useMutation({
     mutationFn: async () => {
       if (!termQuery.activeVersion?.id) throw new Error("Versão do termo indisponível");
-      const { error, data } = await supabase.functions.invoke("term-commitment-sign", {
-        body: {
-          action: "decline",
-          termVersionId: termQuery.activeVersion.id,
-          cpf,
-        },
+      const cpfDigits = normalizeCpf(cpf);
+      const declinedAt = new Date().toISOString();
+
+      const { error: upsertError } = await supabase
+        .from("term_commitments")
+        .upsert(
+          {
+            term_version_id: termQuery.activeVersion.id,
+            member_id: user!.id,
+            status: "declined",
+            cpf: cpfDigits,
+            pdf_path: null,
+            sent_at: termQuery.commitment?.sent_at ?? null,
+            signed_at: null,
+            declined_at: declinedAt,
+          },
+          { onConflict: "term_version_id,member_id" },
+        );
+      if (upsertError) throw upsertError;
+
+      const { error: notifyError } = await supabase.rpc("notify_superadmins", {
+        _type: "term_commitment_declined",
+        _title: "Termo de compromisso recusado",
+        _message: `${user?.user_metadata?.full_name || "Um membro"} recusou o termo de compromisso.`,
+        _link: "/termo-compromisso",
       });
-      if (error) throw error;
-      return data;
+      if (notifyError) throw notifyError;
     },
     onSuccess: async () => {
       toast.success("Recusa registrada");

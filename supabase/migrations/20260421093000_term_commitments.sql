@@ -324,15 +324,15 @@ create policy "term_commitment_versions_select"
 on public.term_commitment_versions
 for select
 to authenticated
-using (is_active or public.has_role('admin', auth.uid()));
+using (is_active or public.has_role(auth.uid(), 'admin'::public.app_role));
 
 drop policy if exists "term_commitment_versions_manage_superadmin" on public.term_commitment_versions;
 create policy "term_commitment_versions_manage_superadmin"
 on public.term_commitment_versions
 for all
 to authenticated
-using (public.has_role('admin', auth.uid()))
-with check (public.has_role('admin', auth.uid()));
+using (public.has_role(auth.uid(), 'admin'::public.app_role))
+with check (public.has_role(auth.uid(), 'admin'::public.app_role));
 
 drop policy if exists "term_commitments_select" on public.term_commitments;
 create policy "term_commitments_select"
@@ -340,7 +340,7 @@ on public.term_commitments
 for select
 to authenticated
 using (
-  public.has_role('admin', auth.uid())
+  public.has_role(auth.uid(), 'admin'::public.app_role)
   or member_id = auth.uid()
 );
 
@@ -349,8 +349,29 @@ create policy "term_commitments_manage_superadmin"
 on public.term_commitments
 for all
 to authenticated
-using (public.has_role('admin', auth.uid()))
-with check (public.has_role('admin', auth.uid()));
+using (public.has_role(auth.uid(), 'admin'::public.app_role))
+with check (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+drop policy if exists "term_commitments_member_self_manage" on public.term_commitments;
+create policy "term_commitments_member_self_manage"
+on public.term_commitments
+for insert
+to authenticated
+with check (
+  member_id = auth.uid()
+  and status in ('signed', 'declined')
+);
+
+drop policy if exists "term_commitments_member_self_update" on public.term_commitments;
+create policy "term_commitments_member_self_update"
+on public.term_commitments
+for update
+to authenticated
+using (member_id = auth.uid())
+with check (
+  member_id = auth.uid()
+  and status in ('signed', 'declined')
+);
 
 insert into storage.buckets (id, name, public)
 values ('term-commitments', 'term-commitments', false)
@@ -364,8 +385,31 @@ to authenticated
 using (
   bucket_id = 'term-commitments'
   and (
-    public.has_role('admin', auth.uid())
+    public.has_role(auth.uid(), 'admin'::public.app_role)
     or split_part(name, '/', 1) = auth.uid()::text
   )
 );
 
+drop policy if exists "term_commitments_storage_insert" on storage.objects;
+create policy "term_commitments_storage_insert"
+on storage.objects
+for insert
+to authenticated
+with check (
+  bucket_id = 'term-commitments'
+  and split_part(name, '/', 1) = auth.uid()::text
+);
+
+drop policy if exists "term_commitments_storage_update" on storage.objects;
+create policy "term_commitments_storage_update"
+on storage.objects
+for update
+to authenticated
+using (
+  bucket_id = 'term-commitments'
+  and split_part(name, '/', 1) = auth.uid()::text
+)
+with check (
+  bucket_id = 'term-commitments'
+  and split_part(name, '/', 1) = auth.uid()::text
+);
