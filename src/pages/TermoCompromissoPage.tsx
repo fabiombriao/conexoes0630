@@ -10,7 +10,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import SignaturePad, { SignaturePadHandle } from "@/components/SignaturePad";
@@ -441,13 +440,11 @@ const TermoCompromissoPage: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <ScrollArea className="max-h-[70vh]">
-                <div className="px-6 py-6">
-                  <div className="whitespace-pre-wrap text-sm leading-7 text-foreground/90">
-                    {termQuery.activeVersion.content_markdown}
-                  </div>
+              <div className="h-[70vh] overflow-y-auto scroll-smooth px-6 py-6 pr-8">
+                <div className="whitespace-pre-wrap text-sm leading-7 text-foreground/90">
+                  {termQuery.activeVersion.content_markdown}
                 </div>
-              </ScrollArea>
+              </div>
             </CardContent>
           </Card>
 
