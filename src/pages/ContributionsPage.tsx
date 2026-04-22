@@ -157,6 +157,7 @@ const ContributionsPage: React.FC = () => {
 
       queryClient.invalidateQueries({ queryKey: ["contributions"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["recent-activity"] });
       queryClient.invalidateQueries({ queryKey: ["monthly-rankings"] });
       setDialogOpen(false);
       setSelectedType(null);

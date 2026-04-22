@@ -26,6 +26,8 @@ export type TermCommitmentRow = {
   updated_at: string;
 };
 
+export type TermCommitmentSignatureState = "loading" | "resolved" | "signed" | "unsigned" | "error";
+
 export function useTermCommitment() {
   const { user } = useAuth();
   const { accountStatus } = usePermissions();
@@ -33,6 +35,7 @@ export function useTermCommitment() {
   const {
     data: activeVersion,
     isLoading: versionLoading,
+    isFetching: versionFetching,
     isError: versionIsError,
     error: versionError,
   } = useQuery<TermCommitmentVersionRow | null>({
@@ -55,6 +58,7 @@ export function useTermCommitment() {
   const {
     data: commitment,
     isLoading: commitmentLoading,
+    isFetching: commitmentFetching,
     isError: commitmentIsError,
     error: commitmentError,
   } = useQuery<TermCommitmentRow | null>({
@@ -74,11 +78,26 @@ export function useTermCommitment() {
     retry: false,
   });
 
-  const needsSignature = !!user && accountStatus === "active" && !!activeVersion?.id && commitment?.status !== "signed";
+  let signatureState: TermCommitmentSignatureState = "resolved";
+
+  if (user && accountStatus === "active" && activeVersion?.id) {
+    if (versionLoading || versionFetching || commitmentLoading || commitmentFetching) {
+      signatureState = "loading";
+    } else if (versionIsError || commitmentIsError) {
+      signatureState = "error";
+    } else if (commitment?.status === "signed") {
+      signatureState = "signed";
+    } else {
+      signatureState = "unsigned";
+    }
+  }
+
+  const needsSignature = signatureState === "unsigned";
 
   return {
     activeVersion,
     commitment,
+    signatureState,
     needsSignature,
     isLoading: versionLoading || commitmentLoading,
     isError: versionIsError || commitmentIsError,

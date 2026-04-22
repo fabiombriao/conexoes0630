@@ -8,7 +8,7 @@ import { useTermCommitment } from "@/hooks/useTermCommitment";
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
   const { accountStatus, isPermissionsLoading } = usePermissions();
-  const { needsSignature } = useTermCommitment();
+  const { signatureState } = useTermCommitment();
   const location = useLocation();
 
   if (loading || isPermissionsLoading) {
@@ -32,7 +32,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   }
 
   if (
-    needsSignature &&
+    signatureState === "unsigned" &&
     location.pathname !== "/termo-compromisso" &&
     location.pathname !== "/notifications"
   ) {

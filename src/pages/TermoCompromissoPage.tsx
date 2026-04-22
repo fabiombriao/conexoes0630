@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { NavLink } from "@/components/NavLink";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import SignaturePad, { SignaturePadHandle } from "@/components/SignaturePad";
 import { toast } from "sonner";
@@ -428,35 +429,37 @@ const TermoCompromissoPage: React.FC = () => {
     enabled: isSuperAdmin && !!termQuery.activeVersion?.id,
   });
 
+  const activeVersionId = termQuery.activeVersion?.id;
+
   const signMutation = useMutation({
     mutationFn: async () => {
-      if (!termQuery.activeVersion?.id) throw new Error("Versão do termo indisponível");
+      if (!activeVersionId) throw new Error("Versão do termo indisponível");
       if (!signatureDataUrl) throw new Error("Assinatura obrigatória");
 
       const cpfDigits = normalizeCpf(cpf);
       const signedAt = new Date().toISOString();
       const signerName = user?.user_metadata?.full_name || "Membro";
       const pdfBytes = await buildTermCommitmentPdf({
-        title: termQuery.activeVersion.title,
-        contentMarkdown: termQuery.activeVersion.content_markdown,
+        title: termQuery.activeVersion!.title,
+        contentMarkdown: termQuery.activeVersion!.content_markdown,
         signerName,
         cpf,
         signatureDataUrl,
         signedAt,
       });
 
-      const pdfPath = `${user!.id}/${termQuery.activeVersion.id}.pdf`;
+      const pdfPath = `${user!.id}/${activeVersionId}.pdf`;
       const { error: uploadError } = await supabase.storage.from(BUCKET).upload(pdfPath, pdfBytes, {
         contentType: "application/pdf",
         upsert: true,
       });
       if (uploadError) throw uploadError;
 
-      const { error: upsertError } = await supabase
+      const { data: savedCommitment, error: upsertError } = await supabase
         .from("term_commitments")
         .upsert(
           {
-            term_version_id: termQuery.activeVersion.id,
+            term_version_id: activeVersionId,
             member_id: user!.id,
             status: "signed",
             cpf: cpfDigits,
@@ -466,12 +469,24 @@ const TermoCompromissoPage: React.FC = () => {
             declined_at: null,
           },
           { onConflict: "term_version_id,member_id" },
-        );
+        )
+        .select("id, term_version_id, member_id, status, cpf, pdf_path, sent_at, signed_at, declined_at, created_at, updated_at")
+        .single();
       if (upsertError) throw upsertError;
+
+      return savedCommitment as TermCommitmentRow;
     },
-    onSuccess: async () => {
+    onSuccess: async (savedCommitment) => {
+      if (savedCommitment && activeVersionId) {
+        await queryClient.cancelQueries({
+          queryKey: ["term-commitment-current", user!.id, activeVersionId],
+        });
+        queryClient.setQueryData<TermCommitmentRow | null>(
+          ["term-commitment-current", user!.id, activeVersionId],
+          savedCommitment,
+        );
+      }
       toast.success("Termo assinado com sucesso");
-      await queryClient.invalidateQueries({ queryKey: ["term-commitment-current"] });
       await queryClient.invalidateQueries({ queryKey: ["term-commitment-members"] });
       await queryClient.invalidateQueries({ queryKey: ["term-commitments-admin"] });
       await queryClient.invalidateQueries({ queryKey: ["notifications"] });
@@ -488,7 +503,7 @@ const TermoCompromissoPage: React.FC = () => {
 
   const declineMutation = useMutation({
     mutationFn: async () => {
-      if (!termQuery.activeVersion?.id) throw new Error("Versão do termo indisponível");
+      if (!activeVersionId) throw new Error("Versão do termo indisponível");
       const cpfDigits = normalizeCpf(cpf);
       const declinedAt = new Date().toISOString();
 
@@ -496,7 +511,7 @@ const TermoCompromissoPage: React.FC = () => {
         .from("term_commitments")
         .upsert(
           {
-            term_version_id: termQuery.activeVersion.id,
+            term_version_id: activeVersionId,
             member_id: user!.id,
             status: "declined",
             cpf: cpfDigits,
@@ -609,9 +624,11 @@ const TermoCompromissoPage: React.FC = () => {
               <Button variant="outline" className="border-border" onClick={() => navigate("/notifications")}>
                 Notificações
               </Button>
-              <Button variant="ghost" className="gap-2" onClick={() => navigate(-1)}>
-                <ArrowLeft className="h-4 w-4" />
-                Voltar
+              <Button variant="ghost" asChild className="gap-2">
+                <NavLink to="/" replace end className="gap-2">
+                  <ArrowLeft className="h-4 w-4" />
+                  Voltar
+                </NavLink>
               </Button>
             </div>
           </div>

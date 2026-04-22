@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
@@ -6,22 +6,67 @@ import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DollarSign, Users, ArrowUpRight, Flame, Handshake, Send, FileCheck, Trophy } from "lucide-react";
 import { useGroupId } from "@/hooks/useGroupId";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const TYPE_ICONS: Record<string, React.ReactNode> = {
+type DashboardContributionType = "one_to_one" | "referral" | "onf";
+type DashboardPeriod = "all" | "7d" | "30d" | "month";
+
+type RecentActivityItem = {
+  id: string;
+  type: DashboardContributionType;
+  contribution_date: string;
+  contact_name: string | null;
+  meeting_location: string | null;
+  business_value: string | number | null;
+  created_at: string;
+};
+
+const TYPE_ICONS: Record<DashboardContributionType, React.ReactNode> = {
   one_to_one: <Users className="h-4 w-4 text-secondary" />,
   referral: <Send className="h-4 w-4 text-primary" />,
   onf: <Handshake className="h-4 w-4 text-success" />,
 };
 
-const TYPE_LABELS: Record<string, string> = {
+const TYPE_LABELS: Record<DashboardContributionType, string> = {
   one_to_one: "Téte a téte",
   referral: "Recomendação",
   onf: "Negócio Fechado",
 };
 
+const PERIOD_LABELS: Record<DashboardPeriod, string> = {
+  all: "Tudo",
+  "7d": "Últimos 7 dias",
+  "30d": "Últimos 30 dias",
+  month: "Este mês",
+};
+
+const getPeriodRange = (period: DashboardPeriod) => {
+  const endDate = new Date();
+  const end = endDate.toISOString().split("T")[0];
+
+  if (period === "all") {
+    return { start: null as string | null, end: null as string | null };
+  }
+
+  const startDate = new Date(endDate);
+  if (period === "7d") {
+    startDate.setDate(startDate.getDate() - 6);
+  } else if (period === "30d") {
+    startDate.setDate(startDate.getDate() - 29);
+  } else {
+    startDate.setDate(1);
+  }
+
+  return {
+    start: startDate.toISOString().split("T")[0],
+    end,
+  };
+};
+
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const { groupId } = useGroupId();
+  const [period, setPeriod] = useState<DashboardPeriod>("all");
 
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],
@@ -38,17 +83,25 @@ const Dashboard: React.FC = () => {
   });
 
   const { data: stats, isLoading } = useQuery({
-    queryKey: ["dashboard-stats", user?.id, groupId],
+    queryKey: ["dashboard-stats", user?.id, groupId, period],
     queryFn: async () => {
-      const weekAgo = new Date();
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      const weekStr = weekAgo.toISOString().split("T")[0];
+      const { start, end } = getPeriodRange(period);
 
-      const { data: contributions } = await supabase
+      let contributionQuery = supabase
         .from("contributions")
-        .select("*")
+        .select("id, type, business_value, contribution_date")
         .eq("user_id", user!.id)
-        .gte("contribution_date", weekStr);
+        .eq("group_id", groupId)
+        .in("type", ["one_to_one", "referral", "onf"]);
+      if (start) {
+        contributionQuery = contributionQuery.gte("contribution_date", start);
+      }
+      if (end) {
+        contributionQuery = contributionQuery.lte("contribution_date", end);
+      }
+
+      const { data: contributions, error: contributionsError } = await contributionQuery.order("contribution_date", { ascending: false });
+      if (contributionsError) throw contributionsError;
 
       const indications = contributions?.filter((c) => c.type === "referral").length ?? 0;
       const deals = contributions?.filter((c) => c.type === "onf") ?? [];
@@ -138,7 +191,7 @@ const Dashboard: React.FC = () => {
     { label: "Pontuação do Mês", value: `${monthlyScore ?? 0} pts`, icon: Trophy, color: "text-warning" },
   ];
 
-  const getActivityDescription = (item: any) => {
+  const getActivityDescription = (item: RecentActivityItem) => {
     if (item.type === "one_to_one") return item.meeting_location ? `em ${item.meeting_location}` : "";
     if (item.type === "referral") return item.contact_name ? `para ${item.contact_name}` : "";
     if (item.type === "onf") return item.business_value ? `R$ ${Number(item.business_value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "";
@@ -147,10 +200,25 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-6xl">
-      <div>
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <h1 className="text-2xl md:text-3xl font-display font-bold">
           O despertador do sucesso toca às 06:30.
         </h1>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground">Período</span>
+          <Select value={period} onValueChange={(value) => setPeriod(value as DashboardPeriod)}>
+            <SelectTrigger className="w-[190px] border-border bg-card">
+              <SelectValue placeholder="Selecione" />
+            </SelectTrigger>
+            <SelectContent>
+              {(Object.keys(PERIOD_LABELS) as DashboardPeriod[]).map((option) => (
+                <SelectItem key={option} value={option}>
+                  {PERIOD_LABELS[option]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
