@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { NavLink } from "@/components/NavLink";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import SignaturePad, { SignaturePadHandle } from "@/components/SignaturePad";
 import { toast } from "sonner";
@@ -604,9 +605,6 @@ const TermoCompromissoPage: React.FC = () => {
   const memberHasSignature = currentCommitmentStatus === "signed";
   const memberDeclined = currentCommitmentStatus === "declined";
   const memberCanSubmit = currentCommitmentStatus === "pending" || currentCommitmentStatus === "sent";
-  const goToAppHome = () => {
-    window.location.assign("/");
-  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -626,9 +624,11 @@ const TermoCompromissoPage: React.FC = () => {
               <Button variant="outline" className="border-border" onClick={() => navigate("/notifications")}>
                 Notificações
               </Button>
-              <Button variant="ghost" type="button" className="gap-2" onClick={goToAppHome}>
-                <ArrowLeft className="h-4 w-4" />
-                Voltar
+              <Button variant="ghost" asChild className="gap-2">
+                <NavLink to="/" replace end className="gap-2">
+                  <ArrowLeft className="h-4 w-4" />
+                  Voltar
+                </NavLink>
               </Button>
             </div>
           </div>
