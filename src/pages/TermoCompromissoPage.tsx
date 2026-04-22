@@ -477,13 +477,15 @@ const TermoCompromissoPage: React.FC = () => {
     },
     onSuccess: async (savedCommitment) => {
       if (savedCommitment && activeVersionId) {
+        await queryClient.cancelQueries({
+          queryKey: ["term-commitment-current", user!.id, activeVersionId],
+        });
         queryClient.setQueryData<TermCommitmentRow | null>(
           ["term-commitment-current", user!.id, activeVersionId],
           savedCommitment,
         );
       }
       toast.success("Termo assinado com sucesso");
-      await queryClient.invalidateQueries({ queryKey: ["term-commitment-current", user!.id, activeVersionId] });
       await queryClient.invalidateQueries({ queryKey: ["term-commitment-members"] });
       await queryClient.invalidateQueries({ queryKey: ["term-commitments-admin"] });
       await queryClient.invalidateQueries({ queryKey: ["notifications"] });
@@ -621,7 +623,7 @@ const TermoCompromissoPage: React.FC = () => {
               <Button variant="outline" className="border-border" onClick={() => navigate("/notifications")}>
                 Notificações
               </Button>
-              <Button variant="ghost" className="gap-2" onClick={() => navigate(-1)}>
+              <Button variant="ghost" className="gap-2" onClick={() => navigate("/", { replace: true })}>
                 <ArrowLeft className="h-4 w-4" />
                 Voltar
               </Button>
