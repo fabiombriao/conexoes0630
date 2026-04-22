@@ -604,6 +604,9 @@ const TermoCompromissoPage: React.FC = () => {
   const memberHasSignature = currentCommitmentStatus === "signed";
   const memberDeclined = currentCommitmentStatus === "declined";
   const memberCanSubmit = currentCommitmentStatus === "pending" || currentCommitmentStatus === "sent";
+  const goToAppHome = () => {
+    window.location.assign("/");
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -623,7 +626,7 @@ const TermoCompromissoPage: React.FC = () => {
               <Button variant="outline" className="border-border" onClick={() => navigate("/notifications")}>
                 Notificações
               </Button>
-              <Button variant="ghost" className="gap-2" onClick={() => navigate("/", { replace: true })}>
+              <Button variant="ghost" type="button" className="gap-2" onClick={goToAppHome}>
                 <ArrowLeft className="h-4 w-4" />
                 Voltar
               </Button>
