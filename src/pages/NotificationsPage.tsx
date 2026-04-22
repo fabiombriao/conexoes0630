@@ -5,16 +5,29 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Bell, Check, Megaphone } from "lucide-react";
+import { Bell, Check, Megaphone, FileText, AlertTriangle } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useNavigate } from "react-router-dom";
 import BroadcastNotificationDialog from "@/components/BroadcastNotificationDialog";
+import { useTermCommitment } from "@/hooks/useTermCommitment";
+
+type NotificationRow = {
+  id: string;
+  user_id: string;
+  title: string;
+  message: string;
+  type: string;
+  link: string | null;
+  read: boolean | null;
+  created_at: string;
+};
 
 const NotificationsPage: React.FC = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { isSuperAdmin, can } = usePermissions();
+  const { needsSignature } = useTermCommitment();
   const [broadcastOpen, setBroadcastOpen] = useState(false);
 
   const canSendAnnouncements = isSuperAdmin || can("send_announcements");
@@ -28,7 +41,7 @@ const NotificationsPage: React.FC = () => {
         .eq("user_id", user!.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data;
+      return data as NotificationRow[];
     },
     enabled: !!user,
   });
@@ -56,7 +69,7 @@ const NotificationsPage: React.FC = () => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
   });
 
-  const handleNotificationClick = (n: any) => {
+  const handleNotificationClick = (n: NotificationRow) => {
     if (!n.read) {
       markReadMutation.mutate(n.id);
     }
@@ -86,6 +99,31 @@ const NotificationsPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {needsSignature && (
+        <Card className="border-border bg-warning/10">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="mt-0.5 h-5 w-5 text-warning shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="font-medium">Você precisa assinar o termo de compromisso</p>
+                <p className="text-sm text-muted-foreground">
+                  Abra a notificação do termo ou acesse diretamente a tela de assinatura para liberar o restante do aplicativo.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 border-border gap-2"
+                  onClick={() => navigate("/termo-compromisso")}
+                >
+                  <FileText className="h-4 w-4" />
+                  Ir para o termo
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {isLoading ? (
         <div className="space-y-3">{[1, 2, 3].map(i => <Skeleton key={i} className="h-16" />)}</div>
