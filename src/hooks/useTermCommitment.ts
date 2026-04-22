@@ -35,6 +35,7 @@ export function useTermCommitment() {
   const {
     data: activeVersion,
     isLoading: versionLoading,
+    isFetching: versionFetching,
     isError: versionIsError,
     error: versionError,
   } = useQuery<TermCommitmentVersionRow | null>({
@@ -57,6 +58,7 @@ export function useTermCommitment() {
   const {
     data: commitment,
     isLoading: commitmentLoading,
+    isFetching: commitmentFetching,
     isError: commitmentIsError,
     error: commitmentError,
   } = useQuery<TermCommitmentRow | null>({
@@ -79,7 +81,7 @@ export function useTermCommitment() {
   let signatureState: TermCommitmentSignatureState = "resolved";
 
   if (user && accountStatus === "active" && activeVersion?.id) {
-    if (versionLoading || commitmentLoading) {
+    if (versionLoading || versionFetching || commitmentLoading || commitmentFetching) {
       signatureState = "loading";
     } else if (versionIsError || commitmentIsError) {
       signatureState = "error";
