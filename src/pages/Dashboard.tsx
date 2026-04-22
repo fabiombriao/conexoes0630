@@ -7,13 +7,25 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DollarSign, Users, ArrowUpRight, Flame, Handshake, Send, FileCheck, Trophy } from "lucide-react";
 import { useGroupId } from "@/hooks/useGroupId";
 
-const TYPE_ICONS: Record<string, React.ReactNode> = {
+type DashboardContributionType = "one_to_one" | "referral" | "onf";
+
+type RecentActivityItem = {
+  id: string;
+  type: DashboardContributionType;
+  contribution_date: string;
+  contact_name: string | null;
+  meeting_location: string | null;
+  business_value: string | number | null;
+  created_at: string;
+};
+
+const TYPE_ICONS: Record<DashboardContributionType, React.ReactNode> = {
   one_to_one: <Users className="h-4 w-4 text-secondary" />,
   referral: <Send className="h-4 w-4 text-primary" />,
   onf: <Handshake className="h-4 w-4 text-success" />,
 };
 
-const TYPE_LABELS: Record<string, string> = {
+const TYPE_LABELS: Record<DashboardContributionType, string> = {
   one_to_one: "Téte a téte",
   referral: "Recomendação",
   onf: "Negócio Fechado",
@@ -40,15 +52,11 @@ const Dashboard: React.FC = () => {
   const { data: stats, isLoading } = useQuery({
     queryKey: ["dashboard-stats", user?.id, groupId],
     queryFn: async () => {
-      const weekAgo = new Date();
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      const weekStr = weekAgo.toISOString().split("T")[0];
-
       const { data: contributions } = await supabase
         .from("contributions")
         .select("*")
         .eq("user_id", user!.id)
-        .gte("contribution_date", weekStr);
+        .in("type", ["one_to_one", "referral", "onf"]);
 
       const indications = contributions?.filter((c) => c.type === "referral").length ?? 0;
       const deals = contributions?.filter((c) => c.type === "onf") ?? [];
@@ -138,7 +146,7 @@ const Dashboard: React.FC = () => {
     { label: "Pontuação do Mês", value: `${monthlyScore ?? 0} pts`, icon: Trophy, color: "text-warning" },
   ];
 
-  const getActivityDescription = (item: any) => {
+  const getActivityDescription = (item: RecentActivityItem) => {
     if (item.type === "one_to_one") return item.meeting_location ? `em ${item.meeting_location}` : "";
     if (item.type === "referral") return item.contact_name ? `para ${item.contact_name}` : "";
     if (item.type === "onf") return item.business_value ? `R$ ${Number(item.business_value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "";

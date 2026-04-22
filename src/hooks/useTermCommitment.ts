@@ -26,6 +26,8 @@ export type TermCommitmentRow = {
   updated_at: string;
 };
 
+export type TermCommitmentSignatureState = "loading" | "resolved" | "signed" | "unsigned" | "error";
+
 export function useTermCommitment() {
   const { user } = useAuth();
   const { accountStatus } = usePermissions();
@@ -74,11 +76,26 @@ export function useTermCommitment() {
     retry: false,
   });
 
-  const needsSignature = !!user && accountStatus === "active" && !!activeVersion?.id && commitment?.status !== "signed";
+  let signatureState: TermCommitmentSignatureState = "resolved";
+
+  if (user && accountStatus === "active" && activeVersion?.id) {
+    if (versionLoading || commitmentLoading) {
+      signatureState = "loading";
+    } else if (versionIsError || commitmentIsError) {
+      signatureState = "error";
+    } else if (commitment?.status === "signed") {
+      signatureState = "signed";
+    } else {
+      signatureState = "unsigned";
+    }
+  }
+
+  const needsSignature = signatureState === "unsigned";
 
   return {
     activeVersion,
     commitment,
+    signatureState,
     needsSignature,
     isLoading: versionLoading || commitmentLoading,
     isError: versionIsError || commitmentIsError,
