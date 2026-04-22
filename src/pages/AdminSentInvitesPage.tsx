@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { UserPlus, Download, ChevronLeft, ChevronRight, ArrowUpDown, X } from "lucide-react";
 import { format } from "date-fns";
 import { useGroupId } from "@/hooks/useGroupId";
+import { sortByText } from "@/lib/sortByText";
 
 type SortKey = "member" | "visitor" | "whatsapp" | "event_date" | "status" | "created_at";
 type SortDir = "asc" | "desc";
@@ -75,7 +76,7 @@ const AdminSentInvitesPage: React.FC = () => {
         .select("user_id, profiles:user_id(full_name)")
         .eq("group_id", groupId!);
       if (error) throw error;
-      return data;
+      return sortByText(data ?? [], (m) => m.profiles?.full_name || "");
     },
     enabled: ready,
   });

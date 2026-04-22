@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { Plus, Flame, Sun, Snowflake } from "lucide-react";
 import { useGroupId } from "@/hooks/useGroupId";
+import { sortByText } from "@/lib/sortByText";
 
 type ContributionType = "one_to_one" | "referral" | "onf";
 
@@ -97,6 +98,11 @@ const ContributionsPage: React.FC = () => {
     },
     enabled: !!groupId,
   });
+
+  const sortedGroupMembers = sortByText(
+    (groupMembers ?? []).filter((m) => m.user_id !== user?.id),
+    (m) => m.full_name,
+  );
 
   const createMutation = useMutation({
     mutationFn: async (data: Record<string, any>) => {
@@ -244,7 +250,7 @@ const ContributionsPage: React.FC = () => {
                         required
                       >
                         <option value="">Selecione...</option>
-                         {groupMembers?.filter((m) => m.user_id !== user?.id).map((m) => (
+                         {sortedGroupMembers.map((m) => (
                           <option key={m.user_id} value={m.user_id}>
                             {m.full_name}
                           </option>
@@ -292,7 +298,7 @@ const ContributionsPage: React.FC = () => {
                         required
                       >
                         <option value="">Selecione o membro...</option>
-                        {groupMembers?.filter((m) => m.user_id !== user?.id).map((m) => (
+                        {sortedGroupMembers.map((m) => (
                           <option key={m.user_id} value={m.user_id}>
                             {m.full_name}
                           </option>
@@ -376,7 +382,7 @@ const ContributionsPage: React.FC = () => {
                           required
                         >
                           <option value="">Selecione o membro...</option>
-                          {groupMembers?.filter((m) => m.user_id !== user?.id).map((m) => (
+                          {sortedGroupMembers.map((m) => (
                             <option key={m.user_id} value={m.user_id}>
                               {m.full_name}
                             </option>
