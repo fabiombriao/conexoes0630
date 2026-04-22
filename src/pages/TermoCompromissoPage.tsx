@@ -58,6 +58,194 @@ const normalizeCpf = (value: string) => value.replace(/\D/g, "").slice(0, 11);
 
 const statusForRow = (commitment?: TermCommitmentRow | null) => commitment?.status ?? "pending";
 
+const normalizeWhitespace = (value: string) => value.replace(/\s+/g, " ").trim();
+
+type TermSectionBlock = {
+  number: string;
+  title: string;
+  paragraphs: string[];
+  bullets: string[];
+};
+
+type TermDocumentStructure = {
+  intro: string[];
+  sections: TermSectionBlock[];
+  closing: string[];
+  signatureLines: string[];
+};
+
+const parseTermDocument = (title: string, content: string): TermDocumentStructure => {
+  const chunks = content
+    .replace(/\r\n/g, "\n")
+    .split(/\n\s*\n/)
+    .map((chunk) => chunk.trim())
+    .filter(Boolean);
+
+  const intro: string[] = [];
+  const sections: TermSectionBlock[] = [];
+  const closing: string[] = [];
+  const signatureLines: string[] = [];
+  const normalizedTitle = normalizeWhitespace(title);
+
+  let currentSection: TermSectionBlock | null = null;
+  let inClosing = false;
+
+  for (const chunk of chunks) {
+    const normalizedChunk = normalizeWhitespace(chunk);
+    if (!normalizedChunk || normalizedChunk === normalizedTitle) {
+      continue;
+    }
+
+    const sectionMatch = normalizedChunk.match(/^(\d+)\.\s+(.+)$/);
+    if (sectionMatch) {
+      currentSection = {
+        number: sectionMatch[1],
+        title: sectionMatch[2].trim(),
+        paragraphs: [],
+        bullets: [],
+      };
+      sections.push(currentSection);
+      inClosing = false;
+      continue;
+    }
+
+    const lines = chunk.split("\n").map((line) => line.trim()).filter(Boolean);
+    const isBulletChunk = lines.length > 0 && lines.every((line) => /^[-*]\s+/.test(line));
+
+    if (isBulletChunk) {
+      const items = lines.map((line) => line.replace(/^[-*]\s+/, "").trim()).filter(Boolean);
+      if (currentSection) {
+        currentSection.bullets.push(...items);
+      } else {
+        intro.push(...items);
+      }
+      continue;
+    }
+
+    if (lines.some((line) => /_{5,}/.test(line))) {
+      signatureLines.push(...lines);
+      inClosing = true;
+      continue;
+    }
+
+    if (/^Conexão 6:30/i.test(normalizedChunk) || /^O sucesso tem/i.test(normalizedChunk)) {
+      closing.push(normalizedChunk);
+      inClosing = true;
+      continue;
+    }
+
+    if (inClosing) {
+      closing.push(normalizedChunk);
+      continue;
+    }
+
+    if (currentSection) {
+      currentSection.paragraphs.push(normalizedChunk);
+    } else {
+      intro.push(normalizedChunk);
+    }
+  }
+
+  return { intro, sections, closing, signatureLines };
+};
+
+const TermDocumentRenderer: React.FC<{ title: string; content: string }> = ({ title, content }) => {
+  const document = React.useMemo(() => parseTermDocument(title, content), [title, content]);
+
+  return (
+    <div className="space-y-6">
+      {document.intro.length > 0 && (
+        <section className="rounded-2xl border border-primary/15 bg-primary/5 p-5">
+          <div className="mb-4 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-primary/80">
+            <FileText className="h-3.5 w-3.5" />
+            Preâmbulo
+          </div>
+          <div className="space-y-4 text-sm leading-7 text-foreground/90 text-justify">
+            {document.intro.map((paragraph, index) => (
+              <p key={`intro-${index}`} className={index === 0 ? "font-medium text-foreground" : ""}>
+                {paragraph}
+              </p>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {document.sections.map((section) => (
+        <section key={section.number} className="rounded-2xl border border-border bg-card/70 p-5 shadow-sm">
+          <div className="mb-4 flex items-start gap-3">
+            <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-sm font-semibold text-primary">
+              {section.number}
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                Cláusula {section.number}
+              </p>
+              <h3 className="text-base font-semibold text-foreground">{section.title}</h3>
+            </div>
+          </div>
+
+          {section.paragraphs.length > 0 && (
+            <div className="space-y-4 text-sm leading-7 text-foreground/90 text-justify">
+              {section.paragraphs.map((paragraph, index) => (
+                <p key={`${section.number}-p-${index}`}>{paragraph}</p>
+              ))}
+            </div>
+          )}
+
+          {section.bullets.length > 0 && (
+            <ul className="mt-4 space-y-3">
+              {section.bullets.map((item, index) => (
+                <li key={`${section.number}-b-${index}`} className="flex gap-3 text-sm leading-7 text-foreground/90">
+                  <span className="mt-3 h-2 w-2 shrink-0 rounded-full bg-primary/80" />
+                  <span className="flex-1">{item}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      ))}
+
+      {document.closing.length > 0 && (
+        <section className="rounded-2xl border border-border bg-muted/20 p-5 text-center">
+          <div className="space-y-3">
+            {document.closing.map((line, index) => (
+              <p
+                key={`closing-${index}`}
+                className={
+                  index === 0
+                    ? "text-base font-semibold text-foreground"
+                    : "text-sm italic text-muted-foreground"
+                }
+              >
+                {line}
+              </p>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {document.signatureLines.length > 0 && (
+        <section className="rounded-2xl border border-border bg-card/70 p-5">
+          <div className="mb-4 text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+            Assinatura física
+          </div>
+          <div className="space-y-5">
+            {document.signatureLines.map((line, index) => {
+              const label = line.replace(/\s{2,}.*$/, "").trim();
+              return (
+                <div key={`signature-${index}`} className="flex items-end gap-4">
+                  <span className="min-w-[128px] text-sm font-medium text-foreground/80">{label}</span>
+                  <span className="flex-1 border-b border-dashed border-border" />
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+};
+
 const PdfPreview: React.FC<{ pdfPath: string; title?: string; memberName?: string }> = ({
   pdfPath,
   title = "PDF assinado",
@@ -441,9 +629,10 @@ const TermoCompromissoPage: React.FC = () => {
             </CardHeader>
             <CardContent className="p-0">
               <div className="h-[70vh] overflow-y-auto scroll-smooth px-6 py-6 pr-8">
-                <div className="whitespace-pre-wrap text-sm leading-7 text-foreground/90">
-                  {termQuery.activeVersion.content_markdown}
-                </div>
+                <TermDocumentRenderer
+                  title={termQuery.activeVersion.title}
+                  content={termQuery.activeVersion.content_markdown}
+                />
               </div>
             </CardContent>
           </Card>
