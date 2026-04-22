@@ -30,7 +30,12 @@ export function useTermCommitment() {
   const { user } = useAuth();
   const { accountStatus } = usePermissions();
 
-  const { data: activeVersion, isLoading: versionLoading } = useQuery<TermCommitmentVersionRow | null>({
+  const {
+    data: activeVersion,
+    isLoading: versionLoading,
+    isError: versionIsError,
+    error: versionError,
+  } = useQuery<TermCommitmentVersionRow | null>({
     queryKey: ["term-commitment-active-version"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -44,9 +49,15 @@ export function useTermCommitment() {
       return data as TermCommitmentVersionRow | null;
     },
     enabled: !!user,
+    retry: false,
   });
 
-  const { data: commitment, isLoading: commitmentLoading } = useQuery<TermCommitmentRow | null>({
+  const {
+    data: commitment,
+    isLoading: commitmentLoading,
+    isError: commitmentIsError,
+    error: commitmentError,
+  } = useQuery<TermCommitmentRow | null>({
     queryKey: ["term-commitment-current", user?.id, activeVersion?.id],
     queryFn: async () => {
       if (!user || !activeVersion?.id) return null;
@@ -60,6 +71,7 @@ export function useTermCommitment() {
       return data as TermCommitmentRow | null;
     },
     enabled: !!user && !!activeVersion?.id && accountStatus === "active",
+    retry: false,
   });
 
   const needsSignature = !!user && accountStatus === "active" && !!activeVersion?.id && commitment?.status !== "signed";
@@ -69,5 +81,7 @@ export function useTermCommitment() {
     commitment,
     needsSignature,
     isLoading: versionLoading || commitmentLoading,
+    isError: versionIsError || commitmentIsError,
+    error: versionError ?? commitmentError,
   };
 }
