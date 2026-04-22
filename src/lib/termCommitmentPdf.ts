@@ -37,6 +37,7 @@ const wrapText = (text: string, font: PDFFont, size: number, maxWidth: number) =
 };
 
 const normalizeMarkdownLine = (line: string) => line.replace(/\s+/g, " ").trim();
+const normalizeWhitespace = (value: string) => value.replace(/\s+/g, " ").trim();
 
 export async function buildTermCommitmentPdf({
   title,
@@ -84,7 +85,7 @@ export async function buildTermCommitmentPdf({
   for (const rawLine of contentLines) {
     const line = normalizeMarkdownLine(rawLine);
 
-    if (!line) {
+    if (!line || line === normalizeWhitespace(title)) {
       y -= 10;
       continue;
     }

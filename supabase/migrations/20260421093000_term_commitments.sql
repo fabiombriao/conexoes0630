@@ -193,118 +193,72 @@ $$;
 insert into public.term_commitment_versions (version, title, content_markdown, is_active)
 values (
   1,
-  'TERMO DE ADESÃO –  CONEXÃO 6:30',
+  'TERMO DE ADESÃO – CONEXÃO 6:30',
   $term$
-TERMO DE ADESÃO –  CONEXÃO 6:30  
+TERMO DE ADESÃO – CONEXÃO 6:30
 
- 
+Seja bem-vindo ao Conexão 6:30.
 
-Seja bem -vindo ao Conexão 6:30.  
- 
+Este é um grupo de networking estratégico, criado para empresários, líderes e profissionais que buscam crescimento real por meio de conexões genuínas, disciplina e geração de oportunidades.
 
-Este é um grupo de networking estratégico, criado para empresários, líderes e 
-profissionais que buscam crescimento real através de conexões genuínas, 
+Ao aderir ao grupo, o participante declara estar ciente e de acordo com as diretrizes abaixo:
 
-disciplina e geração de oportunidades.  
- 
+1. PROPÓSITO DO GRUPO
 
-Ao aderir ao grupo, o participante declara estar ciente e de acordo com as 
-diretrizes abaixo:  
+- Gerar conexões verdadeiras e duradouras
+- Estimular oportunidades de negócios entre os membros
+- Desenvolver habilidades de comunicação, posicionamento e networking
+- Criar um ambiente de crescimento mútuo e colaboração
 
- 
+2. COMPROMISSO COM OS ENCONTROS
 
-1. PROPÓSITO DO GRUPO  
+- Os encontros acontecem semanalmente, às terças-feiras, às 06:30 da manhã.
+- A pontualidade é indispensável.
+- O participante deve comparecer com postura profissional e participativa.
 
--  Gerar conexões verdadeiras e duradouras  
+3. PRESENÇA E RESPONSABILIDADE
 
--  Estimular oportunidades de negócios entre os membros  
--  Desenvolver habilidades de comunicação, posicionamento e networking  
+- Cada membro tem direito a até 3 faltas por semestre.
+- As faltas serão abonadas caso o participante envie um representante qualificado em seu lugar.
+- O representante deve estar alinhado com os objetivos do grupo e apto a gerar conexões.
+- A ausência sem reposição será considerada falta efetiva.
+- O não cumprimento das diretrizes poderá resultar em desligamento do grupo.
 
--  Criar um ambiente de crescimento mútuo e colaboração  
+4. BENEFÍCIOS DO MEMBRO
 
- 
+- Ambiente qualificado de networking e geração de negócios.
+- Possibilidade de apresentar seu negócio e fortalecer sua autoridade.
+- Conexões estratégicas com outros empresários e profissionais.
+- Direito de solicitar recomendações e indicações dentro do grupo, de forma ética.
 
-2. COMPROMISSO COM OS ENCONTROS  
--  Os encontros acontecem semanalmente, às terças -feiras, às 06:30 da manhã  
+5. POSTURA E CULTURA DO GRUPO
 
--  A pontualidade é indispensável  
--  O participante deve comparecer com postura profissional e participativa  
+- Contribuir ativamente com o grupo.
+- Gerar valor antes de esperar retorno.
+- Respeitar todos os membros.
+- Manter ética profissional nas relações e indicações.
+- Evitar comportamentos oportunistas.
 
- 
+6. INVESTIMENTO E FORMA DE PAGAMENTO
 
-3. PRESENÇA E RESPONSABILIDADE  
+- Contribuição mensal de R$ 177,00.
+- Pagamento antecipado.
+- Inadimplência pode resultar em suspensão ou desligamento.
 
--  Cada membro tem direito a até 3 faltas por semestre  
+7. SOBRE O POSICIONAMENTO DO GRUPO
 
--  As faltas serão abonadas caso o participante envie um representante 
-qualificado em seu lugar  
+- Relacionamentos são construídos com intenção.
+- Negócios são consequência da conexão.
+- Disciplina é o diferencial de quem cresce.
 
--  O representante deve estar alinhado com os objetivos do grupo e apto a gerar 
-conexões  
+8. ACEITE
 
--  A ausência sem reposição será considerada falta efetiva  
--  O não cumprimento das diretrizes poderá resultar em desligamento do grupo  
+O participante declara estar ciente e de acordo com todas as diretrizes acima.
 
- 
+Conexão 6:30
+O sucesso tem um horário preferido.
 
- 
-
- 
-
- 
-
-4. BENEFÍCIOS DO MEMBRO  
-
--  Ambiente qualificado de networking e geração de negócios  
--  Possibilidade de apresentar seu negócio e fortalecer sua autoridade  
-
--  Conexões estratégicas com outros empresários e profissionais  
--  Direito de solicitar recomendações e indicações dentro do grupo, de forma 
-
-ética  
-
- 
-
-5. POSTURA E CULTURA DO GRUPO  
--  Contribuir ativamente com o grupo  
-
--  Gerar valor antes de esperar retorno  
--  Respeitar todos os membros  
-
--  Manter ética profissional nas relações e indicações  
--  Evitar comportamentos oportunistas  
-
- 
-
-6. INVESTIMENTO E FORMA DE PAGAMENTO  
--  Contribuição mensal de R$ 177,00  
-
--  Pagamento antecipado  
--  Inadimplência pode resultar em suspensão ou desligamento  
-
- 
-
-7. SOBRE O POSICIONAMENTO DO GRUPO  
-
--  Relacionamentos são construídos com intenção  
--  Negócios são consequência da conexão  
-
--  Disciplina é o diferencial de quem cresce  
-
- 
-
-8. ACEITE  
-
-O participante declara estar ciente e de acordo com todas as diretrizes acima.  
-
- 
-
-Conexão 6:30  
-O sucesso tem um horário preferido.  
-
- 
-
-Conexões 6:30    _______________________________________________________ 
+Conexões 6:30    _______________________________________________________
 
 Novo membro    ____________________________________________
   $term$,
