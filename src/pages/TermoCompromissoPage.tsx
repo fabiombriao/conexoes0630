@@ -208,7 +208,7 @@ const TermoCompromissoPage: React.FC = () => {
   const [agreementChecked, setAgreementChecked] = useState(false);
   const [sentNotice, setSentNotice] = useState(false);
 
-  const { activeVersion, commitment, isLoading } = useTermCommitment();
+  const termQuery = useTermCommitment();
 
   const { data: members = [], isLoading: membersLoading } = useQuery({
     queryKey: ["term-commitment-members"],
@@ -222,30 +222,30 @@ const TermoCompromissoPage: React.FC = () => {
       if (error) throw error;
       return data as MemberRow[];
     },
-    enabled: isSuperAdmin && !!activeVersion?.id,
+    enabled: isSuperAdmin && !!termQuery.activeVersion?.id,
   });
 
   const { data: adminCommitments = [] } = useQuery({
-    queryKey: ["term-commitments-admin", activeVersion?.id],
+    queryKey: ["term-commitments-admin", termQuery.activeVersion?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("term_commitments")
         .select("id, term_version_id, member_id, status, cpf, pdf_path, sent_at, signed_at, declined_at, created_at, updated_at")
-        .eq("term_version_id", activeVersion!.id);
+        .eq("term_version_id", termQuery.activeVersion!.id);
       if (error) throw error;
       return data as TermCommitmentRow[];
     },
-    enabled: isSuperAdmin && !!activeVersion?.id,
+    enabled: isSuperAdmin && !!termQuery.activeVersion?.id,
   });
 
   const signMutation = useMutation({
     mutationFn: async () => {
-      if (!activeVersion?.id) throw new Error("Versão do termo indisponível");
+      if (!termQuery.activeVersion?.id) throw new Error("Versão do termo indisponível");
       if (!signatureDataUrl) throw new Error("Assinatura obrigatória");
       const { error, data } = await supabase.functions.invoke("term-commitment-sign", {
         body: {
           action: "sign",
-          termVersionId: activeVersion.id,
+          termVersionId: termQuery.activeVersion.id,
           cpf,
           signatureDataUrl,
         },
@@ -272,11 +272,11 @@ const TermoCompromissoPage: React.FC = () => {
 
   const declineMutation = useMutation({
     mutationFn: async () => {
-      if (!activeVersion?.id) throw new Error("Versão do termo indisponível");
+      if (!termQuery.activeVersion?.id) throw new Error("Versão do termo indisponível");
       const { error, data } = await supabase.functions.invoke("term-commitment-sign", {
         body: {
           action: "decline",
-          termVersionId: activeVersion.id,
+          termVersionId: termQuery.activeVersion.id,
           cpf,
         },
       });
@@ -296,7 +296,7 @@ const TermoCompromissoPage: React.FC = () => {
     onError: (error: Error) => toast.error(error.message || "Erro ao registrar recusa"),
   });
 
-  const currentCommitmentStatus = commitment?.status ?? "pending";
+  const currentCommitmentStatus = termQuery.commitment?.status ?? "pending";
   const canSign = agreementChecked && cpf.replace(/\D/g, "").length === 11 && !!signatureDataUrl;
 
   const totalMembers = members.length;
@@ -304,7 +304,7 @@ const TermoCompromissoPage: React.FC = () => {
   const pendingCount = adminCommitments.filter((row) => row.status === "pending" || row.status === "sent").length;
   const declinedCount = adminCommitments.filter((row) => row.status === "declined").length;
 
-  if (isLoading && !activeVersion) {
+  if (termQuery.isLoading && !termQuery.activeVersion) {
     return (
       <div className="min-h-screen bg-background px-4 py-10">
         <div className="mx-auto max-w-5xl space-y-4">
@@ -315,7 +315,29 @@ const TermoCompromissoPage: React.FC = () => {
     );
   }
 
-  if (!activeVersion) {
+  if (termQuery.isError) {
+    return (
+      <div className="min-h-screen bg-background px-4 py-10 flex items-center justify-center">
+        <Card className="w-full max-w-xl border-border bg-card">
+          <CardContent className="p-8 text-center space-y-4">
+            <AlertTriangle className="mx-auto h-12 w-12 text-destructive" />
+            <div className="space-y-2">
+              <h1 className="text-xl font-display font-bold">Erro ao carregar o termo</h1>
+              <p className="text-sm text-muted-foreground">
+                O app não conseguiu ler a estrutura do termo no banco de dados de produção.
+                Isso normalmente acontece quando a migração do termo ainda não foi aplicada.
+              </p>
+            </div>
+            {termQuery.error instanceof Error && (
+              <p className="text-xs text-muted-foreground break-words">{termQuery.error.message}</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!termQuery.activeVersion) {
     return (
       <div className="min-h-screen bg-background px-4 py-10 flex items-center justify-center">
         <Card className="w-full max-w-xl border-border bg-card">
@@ -368,14 +390,14 @@ const TermoCompromissoPage: React.FC = () => {
             <CardHeader className="border-b border-border">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <FileText className="h-5 w-5 text-primary" />
-                {activeVersion.title}
+                {termQuery.activeVersion.title}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <ScrollArea className="max-h-[70vh]">
                 <div className="px-6 py-6">
                   <div className="whitespace-pre-wrap text-sm leading-7 text-foreground/90">
-                    {activeVersion.content_markdown}
+                    {termQuery.activeVersion.content_markdown}
                   </div>
                 </div>
               </ScrollArea>
@@ -391,10 +413,10 @@ const TermoCompromissoPage: React.FC = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {memberHasSignature && commitment?.pdf_path ? (
+                {memberHasSignature && termQuery.commitment?.pdf_path ? (
                   <div className="space-y-4">
                     <Badge className={STATUS_META.signed.className}>{STATUS_META.signed.label}</Badge>
-                    <PdfPreview pdfPath={commitment.pdf_path} memberName={user?.user_metadata?.full_name || "Membro"} />
+                    <PdfPreview pdfPath={termQuery.commitment.pdf_path} memberName={user?.user_metadata?.full_name || "Membro"} />
                   </div>
                 ) : (
                   <>
@@ -512,7 +534,7 @@ const TermoCompromissoPage: React.FC = () => {
                             key={member.id}
                             member={member}
                             commitment={commitmentRow}
-                            termVersionId={activeVersion.id}
+                            termVersionId={termQuery.activeVersion.id}
                           />
                         );
                       })}

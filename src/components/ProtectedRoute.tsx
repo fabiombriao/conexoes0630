@@ -8,10 +8,10 @@ import { useTermCommitment } from "@/hooks/useTermCommitment";
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
   const { accountStatus, isPermissionsLoading } = usePermissions();
-  const { needsSignature, isLoading: isTermLoading } = useTermCommitment();
+  const { needsSignature } = useTermCommitment();
   const location = useLocation();
 
-  if (loading || isPermissionsLoading || isTermLoading) {
+  if (loading || isPermissionsLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
