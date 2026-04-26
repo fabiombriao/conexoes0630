@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,40 +15,76 @@ const InvitePage: React.FC = () => {
   const { groupId } = useGroupId();
   const [formData, setFormData] = useState({ name: "", email: "", whatsapp: "", profession: "", event_date: "" });
   const [submitted, setSubmitted] = useState(false);
+  const inviteWindowRef = useRef<Window | null>(null);
+
+  const buildWhatsAppUrl = (payload: typeof formData) => {
+    const phoneDigits = payload.whatsapp.replace(/\D/g, "");
+    if (!phoneDigits) {
+      throw new Error("Informe um WhatsApp válido com DDD.");
+    }
+
+    const phone = phoneDigits.length === 10 || phoneDigits.length === 11 ? `55${phoneDigits}` : phoneDigits;
+    const dateFormatted = payload.event_date
+      ? new Date(`${payload.event_date}T12:00:00`).toLocaleDateString("pt-BR")
+      : "";
+    const message = `Oii ${payload.name}! Tudo bem? Estou te enviando o convite para participares do Conexões 06:30 na data ${dateFormatted}. Segue o link para acerto https://www.asaas.com/c/3aje7z27hu4dnev6 😁`;
+
+    return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+  };
 
   const createMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (payload: typeof formData & { waUrl: string }) => {
       const { data, error } = await supabase.from("visitor_invitations").insert({
         group_id: groupId,
         invited_by: user!.id,
-        visitor_name: formData.name,
-        visitor_email: formData.email,
-        visitor_whatsapp: formData.whatsapp,
-        visitor_profession: formData.profession,
-        event_date: formData.event_date,
+        visitor_name: payload.name,
+        visitor_email: payload.email,
+        visitor_whatsapp: payload.whatsapp,
+        visitor_profession: payload.profession,
+        event_date: payload.event_date,
       }).select().single();
 
       if (error) throw error;
-      return data;
+      return { data, waUrl: payload.waUrl };
     },
-    onSuccess: () => {
+    onSuccess: ({ waUrl }) => {
       setSubmitted(true);
       toast.success("Convite criado!");
 
-      const phone = formData.whatsapp.replace(/\D/g, "");
-      const dateFormatted = formData.event_date
-        ? new Date(formData.event_date + "T12:00:00").toLocaleDateString("pt-BR")
-        : "";
-      const message = `Oii ${formData.name}! Tudo bem? Estou te enviando o convite para participares do Conexões 06:30 na data ${dateFormatted}. Segue o link para acerto https://www.asaas.com/c/3aje7z27hu4dnev6 😁`;
-      const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-      window.open(waUrl, "_blank");
+      const popup = inviteWindowRef.current;
+      if (popup && !popup.closed) {
+        popup.location.href = waUrl;
+        popup.focus();
+      } else {
+        window.location.assign(waUrl);
+      }
+
+      inviteWindowRef.current = null;
     },
-    onError: (e: any) => toast.error(e.message || "Erro ao criar convite"),
+    onError: (e: any) => {
+      inviteWindowRef.current?.close();
+      inviteWindowRef.current = null;
+      toast.error(e.message || "Erro ao criar convite");
+    },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createMutation.mutate();
+
+    try {
+      const waUrl = buildWhatsAppUrl(formData);
+      inviteWindowRef.current = window.open("about:blank", "_blank");
+      if (inviteWindowRef.current) {
+        try {
+          inviteWindowRef.current.opener = null;
+        } catch {
+          // Some browsers block changing opener after opening a new tab.
+        }
+      }
+      createMutation.mutate({ ...formData, waUrl });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao criar link do WhatsApp");
+    }
   };
 
   if (submitted) {
