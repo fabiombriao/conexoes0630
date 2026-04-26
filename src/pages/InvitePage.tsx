@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,8 +14,6 @@ const InvitePage: React.FC = () => {
   const { user } = useAuth();
   const { groupId } = useGroupId();
   const [formData, setFormData] = useState({ name: "", email: "", whatsapp: "", profession: "", event_date: "" });
-  const [submitted, setSubmitted] = useState(false);
-  const inviteWindowRef = useRef<Window | null>(null);
 
   const buildWhatsAppUrl = (payload: typeof formData) => {
     const phoneDigits = payload.whatsapp.replace(/\D/g, "");
@@ -45,25 +43,13 @@ const InvitePage: React.FC = () => {
       }).select().single();
 
       if (error) throw error;
-      return { data, waUrl: payload.waUrl };
+      return payload.waUrl;
     },
-    onSuccess: ({ waUrl }) => {
-      setSubmitted(true);
+    onSuccess: (waUrl) => {
       toast.success("Convite criado!");
-
-      const popup = inviteWindowRef.current;
-      if (popup && !popup.closed) {
-        popup.location.href = waUrl;
-        popup.focus();
-      } else {
-        window.location.assign(waUrl);
-      }
-
-      inviteWindowRef.current = null;
+      window.location.href = waUrl;
     },
     onError: (e: any) => {
-      inviteWindowRef.current?.close();
-      inviteWindowRef.current = null;
       toast.error(e.message || "Erro ao criar convite");
     },
   });
@@ -73,47 +59,11 @@ const InvitePage: React.FC = () => {
 
     try {
       const waUrl = buildWhatsAppUrl(formData);
-      inviteWindowRef.current = window.open("about:blank", "_blank");
-      if (inviteWindowRef.current) {
-        try {
-          inviteWindowRef.current.opener = null;
-        } catch {
-          // Some browsers block changing opener after opening a new tab.
-        }
-      }
       createMutation.mutate({ ...formData, waUrl });
     } catch (err: any) {
       toast.error(err.message || "Erro ao criar link do WhatsApp");
     }
   };
-
-  if (submitted) {
-    return (
-      <div className="space-y-6 max-w-lg">
-        <h1 className="text-2xl font-display font-bold">Convidar Visitante</h1>
-        <Card className="bg-card border-primary border-2">
-          <CardHeader>
-            <CardTitle className="font-display text-lg text-primary">Convite Enviado! 🎉</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              O link do WhatsApp foi aberto automaticamente com a mensagem de convite.
-            </p>
-            <Button
-              variant="outline"
-              className="w-full border-border"
-              onClick={() => {
-                setSubmitted(false);
-                setFormData({ name: "", email: "", whatsapp: "", profession: "", event_date: "" });
-              }}
-            >
-              Criar Outro Convite
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6 max-w-lg">
