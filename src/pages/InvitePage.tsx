@@ -14,70 +14,56 @@ const InvitePage: React.FC = () => {
   const { user } = useAuth();
   const { groupId } = useGroupId();
   const [formData, setFormData] = useState({ name: "", email: "", whatsapp: "", profession: "", event_date: "" });
-  const [submitted, setSubmitted] = useState(false);
+
+  const buildWhatsAppUrl = (payload: typeof formData) => {
+    const phoneDigits = payload.whatsapp.replace(/\D/g, "");
+    if (!phoneDigits) {
+      throw new Error("Informe um WhatsApp válido com DDD.");
+    }
+
+    const phone = phoneDigits.length === 10 || phoneDigits.length === 11 ? `55${phoneDigits}` : phoneDigits;
+    const dateFormatted = payload.event_date
+      ? new Date(`${payload.event_date}T12:00:00`).toLocaleDateString("pt-BR")
+      : "";
+    const message = `Oii ${payload.name}! Tudo bem? Estou te enviando o convite para participares do Conexões 06:30 na data ${dateFormatted}. Segue o link para acerto https://www.asaas.com/c/3aje7z27hu4dnev6 😁`;
+
+    return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+  };
 
   const createMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (payload: typeof formData & { waUrl: string }) => {
       const { data, error } = await supabase.from("visitor_invitations").insert({
         group_id: groupId,
         invited_by: user!.id,
-        visitor_name: formData.name,
-        visitor_email: formData.email,
-        visitor_whatsapp: formData.whatsapp,
-        visitor_profession: formData.profession,
-        event_date: formData.event_date,
+        visitor_name: payload.name,
+        visitor_email: payload.email,
+        visitor_whatsapp: payload.whatsapp,
+        visitor_profession: payload.profession,
+        event_date: payload.event_date,
       }).select().single();
 
       if (error) throw error;
-      return data;
+      return payload.waUrl;
     },
-    onSuccess: () => {
-      setSubmitted(true);
+    onSuccess: (waUrl) => {
       toast.success("Convite criado!");
-
-      const phone = formData.whatsapp.replace(/\D/g, "");
-      const dateFormatted = formData.event_date
-        ? new Date(formData.event_date + "T12:00:00").toLocaleDateString("pt-BR")
-        : "";
-      const message = `Oii ${formData.name}! Tudo bem? Estou te enviando o convite para participares do Conexões 06:30 na data ${dateFormatted}. Segue o link para acerto https://www.asaas.com/c/3aje7z27hu4dnev6 😁`;
-      const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-      window.open(waUrl, "_blank");
+      window.location.href = waUrl;
     },
-    onError: (e: any) => toast.error(e.message || "Erro ao criar convite"),
+    onError: (e: any) => {
+      toast.error(e.message || "Erro ao criar convite");
+    },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createMutation.mutate();
-  };
 
-  if (submitted) {
-    return (
-      <div className="space-y-6 max-w-lg">
-        <h1 className="text-2xl font-display font-bold">Convidar Visitante</h1>
-        <Card className="bg-card border-primary border-2">
-          <CardHeader>
-            <CardTitle className="font-display text-lg text-primary">Convite Enviado! 🎉</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              O link do WhatsApp foi aberto automaticamente com a mensagem de convite.
-            </p>
-            <Button
-              variant="outline"
-              className="w-full border-border"
-              onClick={() => {
-                setSubmitted(false);
-                setFormData({ name: "", email: "", whatsapp: "", profession: "", event_date: "" });
-              }}
-            >
-              Criar Outro Convite
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+    try {
+      const waUrl = buildWhatsAppUrl(formData);
+      createMutation.mutate({ ...formData, waUrl });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao criar link do WhatsApp");
+    }
+  };
 
   return (
     <div className="space-y-6 max-w-lg">
