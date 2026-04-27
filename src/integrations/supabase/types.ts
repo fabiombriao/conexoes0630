@@ -649,6 +649,7 @@ export type Database = {
       notifications: {
         Row: {
           created_at: string
+          contribution_id: string | null
           id: string
           link: string | null
           message: string
@@ -659,6 +660,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          contribution_id?: string | null
           id?: string
           link?: string | null
           message: string
@@ -669,6 +671,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          contribution_id?: string | null
           id?: string
           link?: string | null
           message?: string
@@ -957,12 +960,17 @@ export type Database = {
       }
       create_notification: {
         Args: {
-          _link?: string
+          _contribution_id?: string | null
+          _link?: string | null
           _message: string
           _title: string
           _type: string
           _user_id: string
         }
+        Returns: undefined
+      }
+      accept_referral_contribution: {
+        Args: { _contribution_id: string }
         Returns: undefined
       }
       get_user_group_id: { Args: { _user_id: string }; Returns: string }
