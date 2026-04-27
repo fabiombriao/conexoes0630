@@ -231,6 +231,25 @@ const NotificationsPage: React.FC = () => {
     [senderProfiles],
   );
 
+  const getReferralSenderLabel = (
+    notification: NotificationRow | null,
+    referral: ReferralContributionRow | null = null,
+  ) => {
+    const profileName = referral
+      ? senderNameMap.get(referral.user_id)?.trim()
+      : "";
+    if (profileName) return profileName;
+
+    if (notification) {
+      const extractedName = extractReferralIdentifiers(
+        notification.message,
+      ).senderName;
+      if (extractedName) return extractedName;
+    }
+
+    return "Membro removido";
+  };
+
   const markReadMutation = useMutation({
     mutationFn: async (notifId: string) => {
       const { error } = await supabase
@@ -305,9 +324,10 @@ const NotificationsPage: React.FC = () => {
       activeReferralNotification.message,
     );
     const candidates = receivedReferrals.filter((referral) => {
-      const senderName = senderNameMap.get(referral.user_id) || "";
+      const senderName = senderNameMap.get(referral.user_id)?.trim() || "";
       const senderMatches = identifiers.senderName
-        ? normalizeText(senderName) === normalizeText(identifiers.senderName)
+        ? !senderName ||
+          normalizeText(senderName) === normalizeText(identifiers.senderName)
         : true;
       const contactMatches = identifiers.contactName
         ? normalizeText(referral.contact_name || "") ===
@@ -338,6 +358,30 @@ const NotificationsPage: React.FC = () => {
     contributionIdParam,
     receivedReferrals,
     senderNameMap,
+  ]);
+
+  const activeReferralSourceNotification = useMemo(() => {
+    const stableContributionId =
+      contributionIdParam ||
+      activeReferral?.id ||
+      getNotificationContributionId(activeReferralNotification);
+
+    if (stableContributionId) {
+      return (
+        notifications?.find(
+          (notification) =>
+            getNotificationContributionId(notification) ===
+            stableContributionId,
+        ) || activeReferralNotification || null
+      );
+    }
+
+    return activeReferralNotification;
+  }, [
+    activeReferral?.id,
+    activeReferralNotification,
+    contributionIdParam,
+    notifications,
   ]);
 
   useEffect(() => {
@@ -456,6 +500,11 @@ const NotificationsPage: React.FC = () => {
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-sm">{n.title}</p>
                     <p className="text-sm text-muted-foreground">{n.message}</p>
+                    {isReferralNotification(n) && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Enviado por: {getReferralSenderLabel(n)}
+                      </p>
+                    )}
                     <p className="text-xs text-muted-foreground mt-1">
                       {new Date(n.created_at).toLocaleDateString("pt-BR")}
                     </p>
@@ -493,24 +542,37 @@ const NotificationsPage: React.FC = () => {
           </DialogHeader>
 
           <div className="space-y-5">
-            {activeReferralNotification && (
+            {activeReferralSourceNotification && (
               <Card className="bg-muted/20 border-border">
                 <CardContent className="p-4 space-y-2">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="font-medium text-sm">
-                        {activeReferralNotification.title}
+                        {activeReferralSourceNotification.title}
                       </p>
                       <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                        {activeReferralNotification.message}
+                        {activeReferralSourceNotification.message}
                       </p>
                     </div>
                     <p className="text-xs text-muted-foreground shrink-0">
                       {new Date(
-                        activeReferralNotification.created_at,
+                        activeReferralSourceNotification.created_at,
                       ).toLocaleDateString("pt-BR")}
                     </p>
                   </div>
+                  {isReferralNotification(activeReferralSourceNotification) && (
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">
+                        Enviado por
+                      </p>
+                      <p className="text-sm">
+                        {getReferralSenderLabel(
+                          activeReferralSourceNotification,
+                          activeReferral,
+                        )}
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -522,6 +584,16 @@ const NotificationsPage: React.FC = () => {
               </div>
             ) : activeReferral ? (
               <div className="space-y-4">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Enviado por</p>
+                  <p className="text-sm">
+                    {getReferralSenderLabel(
+                      activeReferralSourceNotification,
+                      activeReferral,
+                    )}
+                  </p>
+                </div>
+
                 <div className="flex items-center justify-between gap-3 flex-wrap">
                   <div className="space-y-1">
                     <p className="font-medium">
