@@ -97,7 +97,7 @@ const ReportsPage: React.FC = () => {
     enabled: !!groupId,
   });
 
-  const totalTT = contributions?.filter((c) => c.type === "one_to_one").length ?? 0;
+  const totalTT = contributions?.filter((c) => c.type === "one_to_one" && c.meeting_confirmation_status === "confirmed").length ?? 0;
   const totalIndications = contributions?.filter((c) => c.type === "referral").length ?? 0;
   const totalDeals = contributions?.filter((c) => c.type === "onf").length ?? 0;
   const totalDealValue = contributions?.filter((c) => c.type === "onf").reduce((s, c) => s + (Number(c.business_value) || 0), 0) ?? 0;

@@ -224,6 +224,11 @@ export type Database = {
           meeting_member_id: string | null
           meeting_topics: string[] | null
           notes: string | null
+          meeting_confirmation_status: string | null
+          meeting_confirmed_by: string | null
+          meeting_confirmed_at: string | null
+          meeting_declined_by: string | null
+          meeting_declined_at: string | null
           referral_action: Database["public"]["Enums"]["referral_action"] | null
           referral_category: string | null
           referral_description: string | null
@@ -262,6 +267,11 @@ export type Database = {
           meeting_member_id?: string | null
           meeting_topics?: string[] | null
           notes?: string | null
+          meeting_confirmation_status?: string | null
+          meeting_confirmed_by?: string | null
+          meeting_confirmed_at?: string | null
+          meeting_declined_by?: string | null
+          meeting_declined_at?: string | null
           referral_action?:
             | Database["public"]["Enums"]["referral_action"]
             | null
@@ -304,6 +314,11 @@ export type Database = {
           meeting_member_id?: string | null
           meeting_topics?: string[] | null
           notes?: string | null
+          meeting_confirmation_status?: string | null
+          meeting_confirmed_by?: string | null
+          meeting_confirmed_at?: string | null
+          meeting_declined_by?: string | null
+          meeting_declined_at?: string | null
           referral_action?:
             | Database["public"]["Enums"]["referral_action"]
             | null
@@ -976,6 +991,10 @@ export type Database = {
       }
       recalculate_ranking_positions: {
         Args: { _group_id: string; _month: string }
+        Returns: undefined
+      }
+      resolve_one_to_one_contribution: {
+        Args: { _accepted: boolean; _contribution_id: string }
         Returns: undefined
       }
       upsert_ranking_points: {
