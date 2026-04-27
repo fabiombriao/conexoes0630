@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { Plus, Flame, Sun, Snowflake } from "lucide-react";
 import { useGroupId } from "@/hooks/useGroupId";
 import { sortByText } from "@/lib/sortByText";
+import { useLocation } from "react-router-dom";
 
 type ContributionType = "one_to_one" | "referral" | "onf";
 
@@ -50,6 +51,7 @@ type ContributionRow = {
   meeting_confirmed_at: string | null;
   meeting_declined_by: string | null;
   meeting_declined_at: string | null;
+  referral_status: string | null;
   created_at: string;
 };
 
@@ -79,6 +81,13 @@ const ONE_TO_ONE_STATUS_META: Record<string, { label: string; className: string 
   declined: { label: "Recusado", className: "bg-destructive/15 text-destructive border-destructive/25" },
 };
 
+const REFERRAL_STATUS_META: Record<string, { label: string; className: string }> = {
+  new: { label: "Nova", className: "bg-primary/15 text-primary border-primary/25" },
+  pending: { label: "Em andamento", className: "bg-warning/15 text-warning border-warning/25" },
+  closed_won: { label: "Fechada", className: "bg-success/15 text-success border-success/25" },
+  closed_lost: { label: "Perdida", className: "bg-destructive/15 text-destructive border-destructive/25" },
+};
+
 const TOPICS = ["Apresentação", "GAINS", "Oportunidades", "Estratégia", "Suporte"];
 
 const getCurrentMonthKey = () => {
@@ -88,6 +97,7 @@ const getCurrentMonthKey = () => {
 
 const ContributionsPage: React.FC = () => {
   const { user } = useAuth();
+  const location = useLocation();
   const { groupId } = useGroupId();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -95,6 +105,7 @@ const ContributionsPage: React.FC = () => {
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [previewItem, setPreviewItem] = useState<ContributionRow | null>(null);
+  const receivedReferralsRef = useRef<HTMLDivElement | null>(null);
 
   const { data: contributions, isLoading } = useQuery<ContributionRow[]>({
     queryKey: ["contributions", user?.id],
@@ -109,6 +120,21 @@ const ContributionsPage: React.FC = () => {
       return data;
     },
     enabled: !!user,
+  });
+
+  const { data: receivedReferrals = [], isLoading: receivedReferralsLoading } = useQuery<ContributionRow[]>({
+    queryKey: ["received-referrals", user?.id, groupId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("contributions")
+        .select("id, user_id, group_id, type, contribution_date, notes, contact_name, contact_phone, contact_email, referral_category, temperature, referral_action, referral_description, referred_to, business_value, is_repeat_business, closing_date, meeting_location, meeting_topics, meeting_member_id, meeting_date, meeting_confirmation_status, meeting_confirmed_by, meeting_confirmed_at, meeting_declined_by, meeting_declined_at, referral_status, created_at")
+        .eq("type", "referral")
+        .eq("referred_to", user!.id)
+        .order("contribution_date", { ascending: false });
+      if (error) throw error;
+      return data as ContributionRow[];
+    },
+    enabled: !!user && !!groupId,
   });
 
   const { data: incomingPending = [], isLoading: incomingPendingLoading } = useQuery<ContributionRow[]>({
@@ -262,6 +288,27 @@ const ContributionsPage: React.FC = () => {
     onError: (e: any) => toast.error(e.message || "Erro ao responder a TRN"),
   });
 
+  const acceptReferralMutation = useMutation({
+    mutationFn: async (contributionId: string) => {
+      const { error } = await supabase.rpc("accept_referral_contribution", {
+        _contribution_id: contributionId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      queryClient.invalidateQueries({ queryKey: ["contributions"] });
+      queryClient.invalidateQueries({ queryKey: ["received-referrals"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["recent-activity"] });
+      queryClient.invalidateQueries({ queryKey: ["monthly-rankings"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["unread-notifications-count"] });
+      setPreviewItem(null);
+      toast.success("Indicação aceita");
+    },
+    onError: (e: any) => toast.error(e.message || "Erro ao aceitar a indicação"),
+  });
+
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -304,6 +351,13 @@ const ContributionsPage: React.FC = () => {
   };
 
   const pendingCount = incomingPending.length;
+
+  useEffect(() => {
+    const focus = new URLSearchParams(location.search).get("focus");
+    if (focus === "received-referrals") {
+      receivedReferralsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [location.search, receivedReferrals.length]);
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -534,6 +588,49 @@ const ContributionsPage: React.FC = () => {
         </Dialog>
       </div>
 
+      <div ref={receivedReferralsRef} className="space-y-4">
+        <Card className="bg-card border-border">
+          <CardContent className="p-4 space-y-4">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                <p className="font-semibold">Indicações recebidas</p>
+                <p className="text-sm text-muted-foreground">
+                  Indicações enviadas para você aparecem aqui para consulta.
+                </p>
+              </div>
+              {receivedReferralsLoading && <span className="text-xs text-muted-foreground">Carregando...</span>}
+            </div>
+
+            {receivedReferrals.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhuma indicação recebida encontrada.</p>
+            ) : (
+              <div className="space-y-3">
+                {receivedReferrals.map((item) => {
+                  const statusMeta = item.referral_status ? REFERRAL_STATUS_META[item.referral_status] : null;
+                  return (
+                    <Card key={item.id} className="bg-muted/20 border-border cursor-pointer" onClick={() => setPreviewItem(item)}>
+                      <CardContent className="p-4 space-y-2">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">{getMemberName(item.user_id) || "Membro"} indicou para você</p>
+                            <p className="text-sm text-muted-foreground truncate">{item.contact_name || "Contato sem nome"}</p>
+                          </div>
+                          {statusMeta && <Badge className={statusMeta.className}>{statusMeta.label}</Badge>}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(item.contribution_date).toLocaleDateString("pt-BR")}
+                          {item.temperature ? ` • ${item.temperature}` : ""}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
       {pendingCount > 0 && (
         <Card className="bg-primary/10 border-primary">
           <CardContent className="p-4 space-y-4">
@@ -759,6 +856,10 @@ const ContributionsPage: React.FC = () => {
                     </div>
                   </div>
                   <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Categoria</Label>
+                    <p className="text-sm">{previewItem.referral_category || "—"}</p>
+                  </div>
+                  <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">Contato</Label>
                     <p className="text-sm">{previewItem.contact_name || "—"}</p>
                   </div>
@@ -780,6 +881,18 @@ const ContributionsPage: React.FC = () => {
                     <Label className="text-xs text-muted-foreground">Observações</Label>
                     <p className="text-sm whitespace-pre-wrap">{previewItem.notes || "—"}</p>
                   </div>
+
+                  {previewItem.referred_to === user?.id && (!previewItem.referral_status || previewItem.referral_status === "new") && (
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      <Button
+                        className="font-semibold"
+                        onClick={() => acceptReferralMutation.mutate(previewItem.id)}
+                        disabled={acceptReferralMutation.isPending}
+                      >
+                        Aceitar indicação
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
 

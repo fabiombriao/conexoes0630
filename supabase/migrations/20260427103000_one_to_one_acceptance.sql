@@ -27,12 +27,18 @@ end $$;
 update public.contributions
 set
   meeting_confirmation_status = 'confirmed',
-  meeting_confirmed_by = coalesce(meeting_confirmed_by, meeting_member_id),
+  meeting_confirmed_by = meeting_member_id,
   meeting_confirmed_at = coalesce(meeting_confirmed_at, created_at),
   meeting_declined_by = null,
   meeting_declined_at = null
 where type = 'one_to_one'
-  and meeting_confirmation_status is distinct from 'confirmed';
+  and meeting_confirmation_status is distinct from 'confirmed'
+  and meeting_member_id is not null
+  and exists (
+    select 1
+    from public.profiles p
+    where p.id = public.contributions.meeting_member_id
+  );
 
 create or replace function public.send_one_to_one_pending_notification()
 returns trigger
@@ -203,4 +209,3 @@ using (
     and meeting_member_id = auth.uid()
   )
 );
-
