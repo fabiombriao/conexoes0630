@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DollarSign, Users, ArrowUpRight, Flame, Handshake, Send, FileCheck, Trophy } from "lucide-react";
+import { DollarSign, Users, ArrowUpRight, Flame, Handshake, Send, FileCheck, Trophy, Clock3 } from "lucide-react";
 import { useGroupId } from "@/hooks/useGroupId";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -17,6 +17,7 @@ type RecentActivityItem = {
   contribution_date: string;
   contact_name: string | null;
   meeting_location: string | null;
+  meeting_confirmation_status: string | null;
   business_value: string | number | null;
   created_at: string;
 };
@@ -89,7 +90,7 @@ const Dashboard: React.FC = () => {
 
       let contributionQuery = supabase
         .from("contributions")
-        .select("id, type, business_value, contribution_date")
+        .select("id, type, business_value, contribution_date, meeting_confirmation_status")
         .eq("user_id", user!.id)
         .eq("group_id", groupId)
         .in("type", ["one_to_one", "referral", "onf"]);
@@ -106,7 +107,8 @@ const Dashboard: React.FC = () => {
       const indications = contributions?.filter((c) => c.type === "referral").length ?? 0;
       const deals = contributions?.filter((c) => c.type === "onf") ?? [];
       const deals_total = deals.reduce((sum, c) => sum + (Number(c.business_value) || 0), 0);
-      const tete_a_tetes = contributions?.filter((c) => c.type === "one_to_one").length ?? 0;
+      const tete_a_tetes_accepted = contributions?.filter((c) => c.type === "one_to_one" && c.meeting_confirmation_status === "confirmed").length ?? 0;
+      const tete_a_tetes_pending = contributions?.filter((c) => c.type === "one_to_one" && c.meeting_confirmation_status === "pending").length ?? 0;
 
       // Attendance streak from attendance_records + approved sessions
       const { data: approvedSessions } = await supabase
@@ -139,7 +141,7 @@ const Dashboard: React.FC = () => {
         }
       }
 
-      return { indications, deals_total, tete_a_tetes, streak };
+      return { indications, deals_total, tete_a_tetes_accepted, tete_a_tetes_pending, streak };
     },
     enabled: !!user && !!groupId,
   });
@@ -150,7 +152,7 @@ const Dashboard: React.FC = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("contributions")
-        .select("id, type, contribution_date, contact_name, meeting_location, business_value, created_at")
+        .select("id, type, contribution_date, contact_name, meeting_location, meeting_confirmation_status, business_value, created_at")
         .eq("user_id", user!.id)
         .in("type", ["one_to_one", "referral", "onf"])
         .order("created_at", { ascending: false })
@@ -185,14 +187,18 @@ const Dashboard: React.FC = () => {
 
   const statCards = [
     { label: "Negócios Fechados (R$)", value: `R$ ${(stats?.deals_total ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, icon: DollarSign, color: "text-success" },
-    { label: "Téte a téte", value: stats?.tete_a_tetes ?? 0, icon: Users, color: "text-secondary" },
+    { label: "Téte a téte aceitas", value: stats?.tete_a_tetes_accepted ?? 0, icon: FileCheck, color: "text-secondary" },
+    { label: "Téte a téte pendentes", value: stats?.tete_a_tetes_pending ?? 0, icon: Clock3, color: "text-warning" },
     { label: "Recomendações", value: stats?.indications ?? 0, icon: ArrowUpRight, color: "text-primary" },
     { label: "Presença", value: `${stats?.streak ?? 0} sem.`, icon: Flame, color: "text-primary" },
     { label: "Pontuação do Mês", value: `${monthlyScore ?? 0} pts`, icon: Trophy, color: "text-warning" },
   ];
 
   const getActivityDescription = (item: RecentActivityItem) => {
-    if (item.type === "one_to_one") return item.meeting_location ? `em ${item.meeting_location}` : "";
+    if (item.type === "one_to_one") {
+      if (item.meeting_confirmation_status !== "confirmed") return "aguardando aceite";
+      return item.meeting_location ? `em ${item.meeting_location}` : "";
+    }
     if (item.type === "referral") return item.contact_name ? `para ${item.contact_name}` : "";
     if (item.type === "onf") return item.business_value ? `R$ ${Number(item.business_value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "";
     return "";
@@ -221,7 +227,7 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
         {statCards.map((stat) => (
           <Card key={stat.label} className="card-hover-border bg-card border-border">
             <CardContent className="p-4">

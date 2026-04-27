@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -44,6 +45,11 @@ type ContributionRow = {
   meeting_topics: string[] | null;
   meeting_member_id: string | null;
   meeting_date: string | null;
+  meeting_confirmation_status: string | null;
+  meeting_confirmed_by: string | null;
+  meeting_confirmed_at: string | null;
+  meeting_declined_by: string | null;
+  meeting_declined_at: string | null;
   created_at: string;
 };
 
@@ -65,6 +71,12 @@ const TIN_POINTS: Record<ContributionType, number> = {
   one_to_one: 2,
   referral: 1,
   onf: 3,
+};
+
+const ONE_TO_ONE_STATUS_META: Record<string, { label: string; className: string }> = {
+  pending: { label: "Aguardando aceite", className: "bg-warning/15 text-warning border-warning/25" },
+  confirmed: { label: "Confirmado", className: "bg-success/15 text-success border-success/25" },
+  declined: { label: "Recusado", className: "bg-destructive/15 text-destructive border-destructive/25" },
 };
 
 const TOPICS = ["Apresentação", "GAINS", "Oportunidades", "Estratégia", "Suporte"];
@@ -89,7 +101,7 @@ const ContributionsPage: React.FC = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("contributions")
-        .select("id, user_id, group_id, type, contribution_date, notes, contact_name, contact_phone, contact_email, referral_category, temperature, referral_action, referral_description, referred_to, business_value, is_repeat_business, closing_date, meeting_location, meeting_topics, meeting_member_id, meeting_date, created_at")
+        .select("id, user_id, group_id, type, contribution_date, notes, contact_name, contact_phone, contact_email, referral_category, temperature, referral_action, referral_description, referred_to, business_value, is_repeat_business, closing_date, meeting_location, meeting_topics, meeting_member_id, meeting_date, meeting_confirmation_status, meeting_confirmed_by, meeting_confirmed_at, meeting_declined_by, meeting_declined_at, created_at")
         .eq("user_id", user!.id)
         .in("type", ["one_to_one", "referral", "onf"])
         .order("contribution_date", { ascending: false });
@@ -97,6 +109,22 @@ const ContributionsPage: React.FC = () => {
       return data;
     },
     enabled: !!user,
+  });
+
+  const { data: incomingPending = [], isLoading: incomingPendingLoading } = useQuery<ContributionRow[]>({
+    queryKey: ["one-to-one-incoming-pending", user?.id, groupId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("contributions")
+        .select("id, user_id, group_id, type, contribution_date, notes, contact_name, contact_phone, contact_email, referral_category, temperature, referral_action, referral_description, referred_to, business_value, is_repeat_business, closing_date, meeting_location, meeting_topics, meeting_member_id, meeting_date, meeting_confirmation_status, meeting_confirmed_by, meeting_confirmed_at, meeting_declined_by, meeting_declined_at, created_at")
+        .eq("meeting_member_id", user!.id)
+        .eq("type", "one_to_one")
+        .eq("meeting_confirmation_status", "pending")
+        .order("contribution_date", { ascending: false });
+      if (error) throw error;
+      return data as ContributionRow[];
+    },
+    enabled: !!user && !!groupId,
   });
 
   const { data: groupMembers } = useQuery<GroupMemberOption[]>({
@@ -160,12 +188,17 @@ const ContributionsPage: React.FC = () => {
         meeting_topics: selectedTopics.length > 0 ? selectedTopics : null,
         meeting_member_id: data.meeting_member_id,
         meeting_date: data.meeting_date,
+        meeting_confirmation_status: selectedType === "one_to_one" ? "pending" : null,
+        meeting_confirmed_by: null,
+        meeting_confirmed_at: null,
+        meeting_declined_by: null,
+        meeting_declined_at: null,
       });
       if (error) throw error;
     },
     onSuccess: async () => {
       // Atualizar ranking
-      if (groupId && user && selectedType) {
+      if (groupId && user && selectedType && selectedType !== "one_to_one") {
         const monthKey = getCurrentMonthKey();
         const pointsMap: Record<string, { tt?: number; indication?: number; deal?: number }> = {
           one_to_one: { tt: TIN_POINTS.one_to_one },
@@ -195,6 +228,7 @@ const ContributionsPage: React.FC = () => {
       }
 
       queryClient.invalidateQueries({ queryKey: ["contributions"] });
+      queryClient.invalidateQueries({ queryKey: ["one-to-one-incoming-pending"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       queryClient.invalidateQueries({ queryKey: ["recent-activity"] });
       queryClient.invalidateQueries({ queryKey: ["monthly-rankings"] });
@@ -205,6 +239,27 @@ const ContributionsPage: React.FC = () => {
       toast.success("Contribuição registrada!");
     },
     onError: (e: any) => toast.error(e.message || "Erro ao registrar"),
+  });
+
+  const resolveOneToOneMutation = useMutation({
+    mutationFn: async ({ contributionId, accepted }: { contributionId: string; accepted: boolean }) => {
+      const { error } = await supabase.rpc("resolve_one_to_one_contribution", {
+        _contribution_id: contributionId,
+        _accepted: accepted,
+      });
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      queryClient.invalidateQueries({ queryKey: ["contributions"] });
+      queryClient.invalidateQueries({ queryKey: ["one-to-one-incoming-pending"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["recent-activity"] });
+      queryClient.invalidateQueries({ queryKey: ["monthly-rankings"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["unread-notifications-count"] });
+      toast.success("Resposta registrada");
+    },
+    onError: (e: any) => toast.error(e.message || "Erro ao responder a TRN"),
   });
 
   const handleChange = (field: string, value: string) => {
@@ -240,6 +295,15 @@ const ContributionsPage: React.FC = () => {
     }
     return `R$ ${Number(c.business_value || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
   };
+
+  const getOneToOneStatus = (c: ContributionRow) => {
+    if (c.type !== "one_to_one") return null;
+    if (c.meeting_confirmation_status === "confirmed") return ONE_TO_ONE_STATUS_META.confirmed;
+    if (c.meeting_confirmation_status === "declined") return ONE_TO_ONE_STATUS_META.declined;
+    return ONE_TO_ONE_STATUS_META.pending;
+  };
+
+  const pendingCount = incomingPending.length;
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -470,6 +534,74 @@ const ContributionsPage: React.FC = () => {
         </Dialog>
       </div>
 
+      {pendingCount > 0 && (
+        <Card className="bg-primary/10 border-primary">
+          <CardContent className="p-4 space-y-4">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                <p className="font-semibold text-primary">TRNs aguardando seu aceite</p>
+                <p className="text-sm text-muted-foreground">
+                  Você tem {pendingCount} {pendingCount === 1 ? "reunião" : "reuniões"} Téte-a-téte para confirmar.
+                </p>
+              </div>
+              {incomingPendingLoading && <span className="text-xs text-muted-foreground">Carregando...</span>}
+            </div>
+
+            <div className="space-y-3">
+              {incomingPending.map((item) => {
+                const statusMeta = getOneToOneStatus(item);
+                return (
+                  <Card key={item.id} className="bg-card border-border">
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">
+                            {getMemberName(item.user_id) || "Membro"} quer confirmar um Téte-a-téte com você
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(item.contribution_date).toLocaleDateString("pt-BR")}
+                            {item.meeting_location ? ` • ${item.meeting_location}` : ""}
+                          </p>
+                        </div>
+                        {statusMeta && <Badge className={statusMeta.className}>{statusMeta.label}</Badge>}
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          className="font-semibold"
+                          onClick={() => resolveOneToOneMutation.mutate({ contributionId: item.id, accepted: true })}
+                          disabled={resolveOneToOneMutation.isPending}
+                        >
+                          Confirmar e pontuar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-border text-destructive hover:bg-destructive/10"
+                          onClick={() => resolveOneToOneMutation.mutate({ contributionId: item.id, accepted: false })}
+                          disabled={resolveOneToOneMutation.isPending}
+                        >
+                          Recusar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setPreviewItem(item)}
+                          disabled={resolveOneToOneMutation.isPending}
+                        >
+                          Ver detalhes
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => <div key={i} className="h-16 bg-muted rounded-lg animate-pulse" />)}
@@ -513,6 +645,12 @@ const ContributionsPage: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   {c.type === "referral" && tempIcon(c.temperature)}
+                  {c.type === "one_to_one" && (() => {
+                    const statusMeta = getOneToOneStatus(c);
+                    return statusMeta ? (
+                      <Badge className={`text-[10px] ${statusMeta.className}`}>{statusMeta.label}</Badge>
+                    ) : null;
+                  })()}
                   <span className="text-xs font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full shrink-0">
                     {TIN_POINTS[c.type as ContributionType] || 0} pts
                   </span>
@@ -553,6 +691,15 @@ const ContributionsPage: React.FC = () => {
               {previewItem.type === "one_to_one" && (
                 <div className="space-y-4">
                   <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Status</Label>
+                    <div>
+                      {(() => {
+                        const statusMeta = getOneToOneStatus(previewItem);
+                        return statusMeta ? <Badge className={statusMeta.className}>{statusMeta.label}</Badge> : null;
+                      })()}
+                    </div>
+                  </div>
+                  <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">Com quem foi</Label>
                     <p className="text-sm font-medium">
                       {getMemberName(previewItem.meeting_member_id) || previewItem.meeting_location || "Téte a téte"}
@@ -574,6 +721,26 @@ const ContributionsPage: React.FC = () => {
                     <Label className="text-xs text-muted-foreground">Observações</Label>
                     <p className="text-sm whitespace-pre-wrap">{previewItem.notes || "—"}</p>
                   </div>
+
+                  {previewItem.meeting_confirmation_status === "pending" && previewItem.meeting_member_id === user?.id && (
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      <Button
+                        className="font-semibold"
+                        onClick={() => resolveOneToOneMutation.mutate({ contributionId: previewItem.id, accepted: true })}
+                        disabled={resolveOneToOneMutation.isPending}
+                      >
+                        Confirmar e pontuar
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="border-border text-destructive hover:bg-destructive/10"
+                        onClick={() => resolveOneToOneMutation.mutate({ contributionId: previewItem.id, accepted: false })}
+                        disabled={resolveOneToOneMutation.isPending}
+                      >
+                        Recusar
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
 
