@@ -330,12 +330,22 @@ const ContributionsPage: React.FC = () => {
     return <Snowflake className="h-4 w-4 text-blue-400" />;
   };
 
-  const getMemberName = (memberId: string | null) =>
-    sortedGroupMembers.find((m) => m.user_id === memberId)?.full_name || null;
+  const getMemberName = (
+    memberId: string | null,
+    fallback = "Membro removido",
+  ) => {
+    if (!memberId) return fallback;
+
+    const memberName = sortedGroupMembers
+      .find((m) => m.user_id === memberId)
+      ?.full_name?.trim();
+
+    return memberName || fallback;
+  };
 
   const getContributionTitle = (c: ContributionRow) => {
     if (c.type === "one_to_one") {
-      return getMemberName(c.meeting_member_id) || c.meeting_location || "Téte a téte";
+      return getMemberLabel(c.meeting_member_id);
     }
     if (c.type === "referral") {
       return c.contact_name || "Recomendação";
@@ -601,32 +611,51 @@ const ContributionsPage: React.FC = () => {
               {receivedReferralsLoading && <span className="text-xs text-muted-foreground">Carregando...</span>}
             </div>
 
-            {receivedReferrals.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nenhuma indicação recebida encontrada.</p>
-            ) : (
-              <div className="space-y-3">
-                {receivedReferrals.map((item) => {
-                  const statusMeta = item.referral_status ? REFERRAL_STATUS_META[item.referral_status] : null;
-                  return (
-                    <Card key={item.id} className="bg-muted/20 border-border cursor-pointer" onClick={() => setPreviewItem(item)}>
-                      <CardContent className="p-4 space-y-2">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="font-medium truncate">{getMemberName(item.user_id) || "Membro"} indicou para você</p>
-                            <p className="text-sm text-muted-foreground truncate">{item.contact_name || "Contato sem nome"}</p>
-                          </div>
-                          {statusMeta && <Badge className={statusMeta.className}>{statusMeta.label}</Badge>}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(item.contribution_date).toLocaleDateString("pt-BR")}
-                          {item.temperature ? ` • ${item.temperature}` : ""}
-                        </p>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            )}
+                {receivedReferrals.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Nenhuma indicação recebida encontrada.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {receivedReferrals.map((item) => {
+                      const statusMeta = item.referral_status
+                        ? REFERRAL_STATUS_META[item.referral_status]
+                        : null;
+
+                      return (
+                        <Card
+                          key={item.id}
+                          className="bg-muted/20 border-border cursor-pointer"
+                          onClick={() => setPreviewItem(item)}
+                        >
+                          <CardContent className="p-4 space-y-2">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="font-medium truncate">
+                                  {getMemberLabel(item.user_id)} indicou para você
+                                </p>
+                                <p className="text-sm text-muted-foreground truncate">
+                                  {item.contact_name || "Contato sem nome"}
+                                </p>
+                              </div>
+                              {statusMeta && (
+                                <Badge className={statusMeta.className}>
+                                  {statusMeta.label}
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(item.contribution_date).toLocaleDateString(
+                                "pt-BR",
+                              )}
+                              {item.temperature ? ` • ${item.temperature}` : ""}
+                            </p>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )}
           </CardContent>
         </Card>
       </div>
@@ -653,7 +682,7 @@ const ContributionsPage: React.FC = () => {
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="font-medium truncate">
-                            {getMemberName(item.user_id) || "Membro"} quer confirmar um Téte-a-téte com você
+                            {getMemberLabel(item.user_id)} quer confirmar um Téte-a-téte com você
                           </p>
                           <p className="text-sm text-muted-foreground">
                             {new Date(item.contribution_date).toLocaleDateString("pt-BR")}
@@ -796,12 +825,12 @@ const ContributionsPage: React.FC = () => {
                       })()}
                     </div>
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Com quem foi</Label>
-                    <p className="text-sm font-medium">
-                      {getMemberName(previewItem.meeting_member_id) || previewItem.meeting_location || "Téte a téte"}
-                    </p>
-                  </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Com quem foi</Label>
+                  <p className="text-sm font-medium">
+                    {getMemberLabel(previewItem.meeting_member_id)}
+                  </p>
+                </div>
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">Local</Label>
                     <p className="text-sm">{previewItem.meeting_location || "—"}</p>
@@ -845,9 +874,11 @@ const ContributionsPage: React.FC = () => {
                 <div className="space-y-4">
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Indicado para</Label>
+                      <Label className="text-xs text-muted-foreground">
+                        Indicado para
+                      </Label>
                       <p className="text-sm font-medium">
-                        {getMemberName(previewItem.referred_to) || "Membro do grupo"}
+                        {getMemberLabel(previewItem.referred_to)}
                       </p>
                     </div>
                     <div className="space-y-1">
@@ -914,7 +945,7 @@ const ContributionsPage: React.FC = () => {
                     <Label className="text-xs text-muted-foreground">Fechado com</Label>
                     <p className="text-sm">
                       {previewItem.referred_to
-                        ? getMemberName(previewItem.referred_to) || "Membro do grupo"
+                        ? getMemberLabel(previewItem.referred_to)
                         : "Cliente externo"}
                     </p>
                   </div>
