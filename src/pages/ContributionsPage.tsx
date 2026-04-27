@@ -330,7 +330,7 @@ const ContributionsPage: React.FC = () => {
     return <Snowflake className="h-4 w-4 text-blue-400" />;
   };
 
-  const getMemberName = (
+  const getMemberLabel = (
     memberId: string | null,
     fallback = "Membro removido",
   ) => {
