@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Trophy, Lock, History } from "lucide-react";
 import { useGroupId } from "@/hooks/useGroupId";
 import { sortByText } from "@/lib/sortByText";
+import { getHistoricalRankingMonths } from "@/lib/rankingHistory";
 
 const RankingPage: React.FC = () => {
   const { groupId } = useGroupId();
@@ -104,25 +105,42 @@ const RankingPage: React.FC = () => {
     }));
   }, [groupMembers, rankings]);
 
-  const { data: archivedMonths } = useQuery({
-    queryKey: ["archived-months", groupId],
+  const { data: historyMonthRows, isLoading: historyMonthsLoading } = useQuery({
+    queryKey: ["monthly-rankings", "history-months", groupId, currentMonth],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("monthly_rankings")
         .select("month")
         .eq("group_id", groupId!)
-        .eq("is_archived", true)
+        .lt("month", currentMonth)
         .order("month", { ascending: false });
       if (error) throw error;
-      const unique = [...new Set((data ?? []).map((r) => r.month))];
-      return unique;
+      return (data ?? []).map((r) => r.month);
     },
     enabled: !!groupId,
     staleTime: 5 * 60_000,
   });
 
+  const historyMonths = useMemo(
+    () => getHistoricalRankingMonths(historyMonthRows ?? [], currentMonth),
+    [historyMonthRows, currentMonth],
+  );
+
+  useEffect(() => {
+    if (historyMonths.length === 0) {
+      if (historyMonth !== "") {
+        setHistoryMonth("");
+      }
+      return;
+    }
+
+    if (!historyMonth || !historyMonths.includes(historyMonth)) {
+      setHistoryMonth(historyMonths[0]);
+    }
+  }, [historyMonth, historyMonths]);
+
   const { data: historyRankings, isLoading: historyLoading } = useQuery({
-    queryKey: ["history-rankings", historyMonth, groupId],
+    queryKey: ["monthly-rankings", "history-rankings", historyMonth, groupId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("monthly_rankings")
@@ -217,7 +235,9 @@ const RankingPage: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="history" className="space-y-4 mt-4">
-          {!archivedMonths || archivedMonths.length === 0 ? (
+          {historyMonthsLoading ? (
+            <div className="space-y-2">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-16" />)}</div>
+          ) : historyMonths.length === 0 ? (
             <Card className="bg-card border-border">
               <CardContent className="p-8 text-center text-muted-foreground">
                 <History className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
@@ -232,7 +252,7 @@ const RankingPage: React.FC = () => {
                 className="h-10 w-full rounded-md border border-border bg-muted px-3 py-2 text-sm"
               >
                 <option value="">Selecione um mês</option>
-                {archivedMonths.map((m) => (
+                {historyMonths.map((m) => (
                   <option key={m} value={m}>{formatMonth(m)}</option>
                 ))}
               </select>
