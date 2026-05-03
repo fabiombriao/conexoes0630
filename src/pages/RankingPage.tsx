@@ -19,7 +19,7 @@ const RankingPage: React.FC = () => {
   const [historyMonth, setHistoryMonth] = useState("");
 
   // Fetch all group members
-  const { data: groupMembers } = useQuery({
+  const { data: groupMembers, isLoading: groupMembersLoading } = useQuery({
     queryKey: ["group-members-ranking", groupId],
     queryFn: async () => {
       const { data: members, error: membersError } = await supabase
@@ -144,7 +144,7 @@ const RankingPage: React.FC = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("monthly_rankings")
-        .select("*, profiles:member_id(full_name, avatar_url)")
+        .select("*")
         .eq("group_id", groupId)
         .eq("month", historyMonth)
         .order("total_points", { ascending: false });
@@ -154,6 +154,34 @@ const RankingPage: React.FC = () => {
     enabled: !!groupId && !!historyMonth,
     staleTime: 60_000,
   });
+
+  const historyMergedRankings = useMemo(() => {
+    if (!groupMembers) return [];
+    const rankingMap = new Map((historyRankings || []).map((r) => [r.member_id, r]));
+
+    const merged = groupMembers.map((m: any) => {
+      const ranking = rankingMap.get(m.user_id);
+      return {
+        id: ranking?.id || `member-${m.user_id}`,
+        member_id: m.user_id,
+        total_points: ranking?.total_points ?? 0,
+        position: ranking?.position ?? 0,
+        tt_points: ranking?.tt_points ?? 0,
+        indication_points: ranking?.indication_points ?? 0,
+        deal_points: ranking?.deal_points ?? 0,
+        presence_points: ranking?.presence_points ?? 0,
+        profiles: {
+          full_name: m.full_name,
+          avatar_url: m.avatar_url,
+        },
+      };
+    });
+
+    return merged.sort((a, b) => b.total_points - a.total_points).map((r, i) => ({
+      ...r,
+      position: i + 1,
+    }));
+  }, [groupMembers, historyRankings]);
 
   const formatMonth = (m: string) => {
     const d = new Date(m + "T12:00:00");
@@ -220,7 +248,7 @@ const RankingPage: React.FC = () => {
             </Card>
           )}
 
-          {isLoading ? (
+          {isLoading || groupMembersLoading ? (
             <div className="space-y-2">{[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-16" />)}</div>
           ) : mergedRankings.length === 0 ? (
             <Card className="bg-card border-border">
@@ -258,12 +286,12 @@ const RankingPage: React.FC = () => {
               </select>
 
               {historyMonth && (
-                historyLoading ? (
+                historyLoading || groupMembersLoading ? (
                   <div className="space-y-2">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-16" />)}</div>
-                ) : !historyRankings || historyRankings.length === 0 ? (
+                ) : historyMergedRankings.length === 0 ? (
                   <p className="text-center text-muted-foreground py-4">Sem dados para este mês</p>
                 ) : (
-                  <RankingList data={historyRankings} hidePoints={false} />
+                  <RankingList data={historyMergedRankings} hidePoints={false} />
                 )
               )}
             </>
