@@ -91,7 +91,7 @@ const Dashboard: React.FC = () => {
       let contributionQuery = supabase
         .from("contributions")
         .select("id, type, business_value, contribution_date, meeting_confirmation_status")
-        .eq("user_id", user!.id)
+        .or(`user_id.eq.${user!.id},and(meeting_member_id.eq.${user!.id},type.eq.one_to_one,meeting_confirmation_status.eq.confirmed)`)
         .eq("group_id", groupId)
         .in("type", ["one_to_one", "referral", "onf"]);
       if (start) {
@@ -153,7 +153,7 @@ const Dashboard: React.FC = () => {
       const { data, error } = await supabase
         .from("contributions")
         .select("id, type, contribution_date, contact_name, meeting_location, meeting_confirmation_status, business_value, created_at")
-        .eq("user_id", user!.id)
+        .or(`user_id.eq.${user!.id},and(meeting_member_id.eq.${user!.id},type.eq.one_to_one,meeting_confirmation_status.eq.confirmed)`)
         .in("type", ["one_to_one", "referral", "onf"])
         .order("created_at", { ascending: false })
         .limit(10);
