@@ -132,12 +132,12 @@ const ContributionsPage: React.FC = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("contributions")
-        .select("id, user_id, group_id, type, contribution_date, notes, contact_name, contact_phone, contact_email, referral_category, temperature, referral_action, referral_description, referred_to, business_value, is_repeat_business, closing_date, meeting_location, meeting_topics, meeting_member_id, meeting_date, meeting_confirmation_status, meeting_confirmed_by, meeting_confirmed_at, meeting_declined_by, meeting_declined_at, created_at")
+        .select("id, user_id, group_id, type, contribution_date, notes, contact_name, contact_phone, contact_email, referral_category, temperature, referral_action, referral_description, referred_to, business_value, is_repeat_business, closing_date, meeting_location, meeting_topics, meeting_member_id, meeting_date, meeting_confirmation_status, meeting_confirmed_by, meeting_confirmed_at, meeting_declined_by, meeting_declined_at, referral_status, created_at")
         .or(`user_id.eq.${user!.id},and(meeting_member_id.eq.${user!.id},type.eq.one_to_one,meeting_confirmation_status.eq.confirmed)`)
         .in("type", ["one_to_one", "referral", "onf"])
         .order("contribution_date", { ascending: false });
       if (error) throw error;
-      return data;
+      return data as ContributionRow[];
     },
     enabled: !!user,
   });
