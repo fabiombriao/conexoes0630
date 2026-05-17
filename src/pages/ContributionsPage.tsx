@@ -330,8 +330,8 @@ const ContributionsPage: React.FC = () => {
   });
 
   const nudgeMutation = useMutation({
-    mutationFn: async ({ recipientId, title, message, contributionId }: {
-      recipientId: string; title: string; message: string; contributionId: string;
+    mutationFn: async ({ recipientId, title, message, contributionId, link }: {
+      recipientId: string; title: string; message: string; contributionId: string; link: string;
     }) => {
       const { error } = await supabase.from("notifications").insert({
         user_id: recipientId,
@@ -339,6 +339,7 @@ const ContributionsPage: React.FC = () => {
         message,
         type: "reminder",
         contribution_id: contributionId,
+        link,
         read: false,
       });
       if (error) throw error;
@@ -924,8 +925,9 @@ const ContributionsPage: React.FC = () => {
                         onClick={() => nudgeMutation.mutate({
                           recipientId: previewItem.meeting_member_id!,
                           title: "Lembrete: Téte-a-téte aguardando confirmação",
-                          message: `${currentProfile?.full_name || "Um membro"} está aguardando que você confirme o Téte-a-téte registrado. Acesse Minhas TRN's para confirmar e pontuar.`,
+                          message: `${currentProfile?.full_name || "Um membro"} está aguardando que você confirme o Téte-a-téte registrado. Clique aqui para ir para Minhas TRN's e confirmar.`,
                           contributionId: previewItem.id,
+                          link: "/contributions",
                         })}
                         disabled={nudgeMutation.isPending}
                       >
@@ -1000,8 +1002,9 @@ const ContributionsPage: React.FC = () => {
                         onClick={() => nudgeMutation.mutate({
                           recipientId: previewItem.referred_to!,
                           title: "Lembrete: Indicação aguardando aceite",
-                          message: `${currentProfile?.full_name || "Um membro"} está aguardando que você aceite a indicação de ${previewItem.contact_name || "um contato"}. Acesse Minhas TRN's ou Notificações para aceitar.`,
+                          message: `${currentProfile?.full_name || "Um membro"} está aguardando que você aceite a indicação de ${previewItem.contact_name || "um contato"}. Clique aqui para ir para Minhas TRN's e aceitar.`,
                           contributionId: previewItem.id,
+                          link: "/contributions?focus=received-referrals",
                         })}
                         disabled={nudgeMutation.isPending}
                       >
