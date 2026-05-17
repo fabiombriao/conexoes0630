@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -108,6 +108,11 @@ const ContributionsPage: React.FC = () => {
   const [previewItem, setPreviewItem] = useState<ContributionRow | null>(null);
   const receivedReferralsRef = useRef<HTMLDivElement | null>(null);
 
+  const todayLocal = useMemo(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  }, []);
+
   const { data: currentProfile } = useQuery({
     queryKey: ["current-profile", user?.id],
     queryFn: async () => {
@@ -212,7 +217,7 @@ const ContributionsPage: React.FC = () => {
         user_id: user!.id,
         group_id: groupId,
         type: selectedType!,
-        contribution_date: data.contribution_date || new Date().toISOString().split("T")[0],
+        contribution_date: data.contribution_date || todayLocal,
         notes: data.notes,
         contact_name: data.contact_name,
         contact_phone: data.contact_phone,
@@ -459,7 +464,7 @@ const ContributionsPage: React.FC = () => {
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-2">
                         <Label>Data</Label>
-                        <Input type="date" value={formData.contribution_date || ""} onChange={(e) => handleChange("contribution_date", e.target.value)} className="bg-muted border-border min-h-[48px]" required />
+                        <Input type="date" value={formData.contribution_date || todayLocal} onChange={(e) => handleChange("contribution_date", e.target.value)} className="bg-muted border-border min-h-[48px]" required />
                       </div>
                       <div className="space-y-2">
                         <Label>Local</Label>
@@ -553,7 +558,7 @@ const ContributionsPage: React.FC = () => {
                     </div>
                     <div className="space-y-2">
                       <Label>Data</Label>
-                      <Input type="date" value={formData.contribution_date || ""} onChange={(e) => handleChange("contribution_date", e.target.value)} className="bg-muted border-border min-h-[48px]" />
+                      <Input type="date" value={formData.contribution_date || todayLocal} onChange={(e) => handleChange("contribution_date", e.target.value)} className="bg-muted border-border min-h-[48px]" />
                     </div>
                   </>
                 )}
@@ -604,7 +609,7 @@ const ContributionsPage: React.FC = () => {
                     </div>
                     <div className="space-y-2">
                       <Label>Data do fechamento</Label>
-                      <Input type="date" value={formData.closing_date || ""} onChange={(e) => handleChange("closing_date", e.target.value)} className="bg-muted border-border min-h-[48px]" />
+                      <Input type="date" value={formData.closing_date || todayLocal} onChange={(e) => handleChange("closing_date", e.target.value)} className="bg-muted border-border min-h-[48px]" />
                     </div>
                   </>
                 )}
