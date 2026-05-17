@@ -25,7 +25,7 @@ const InvitePage: React.FC = () => {
     const dateFormatted = payload.event_date
       ? new Date(`${payload.event_date}T12:00:00`).toLocaleDateString("pt-BR")
       : "";
-    const message = `Oii ${payload.name}! Tudo bem? Estou te enviando o convite para participares do Conexões 06:30 na data ${dateFormatted}. Segue o link para acerto https://www.asaas.com/c/3aje7z27hu4dnev6 😁`;
+    const message = `Oii ${payload.name}! Tudo bem? Estou te enviando o convite para participares do Conexões 06:30 na data ${dateFormatted}. Segue o link para confirmar sua inscrição: https://www.asaas.com/c/3aje7z27hu4dnev6 😁`;
 
     return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
   };

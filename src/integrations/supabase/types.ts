@@ -1041,7 +1041,7 @@ export type Database = {
         | "business_round"
       invitation_status: "pending" | "confirmed" | "declined"
       referral_action: "called" | "scheduled" | "email" | "in_person"
-      referral_status: "new" | "pending" | "closed_won" | "closed_lost"
+      referral_status: "pending" | "accepted"
       referral_temperature: "hot" | "warm" | "cold"
       term_commitment_status: "pending" | "sent" | "signed" | "declined"
       ueg_type:
@@ -1197,7 +1197,7 @@ export const Constants = {
       ],
       invitation_status: ["pending", "confirmed", "declined"],
       referral_action: ["called", "scheduled", "email", "in_person"],
-      referral_status: ["new", "pending", "closed_won", "closed_lost"],
+      referral_status: ["pending", "accepted"],
       referral_temperature: ["hot", "warm", "cold"],
       ueg_type: [
         "article",
