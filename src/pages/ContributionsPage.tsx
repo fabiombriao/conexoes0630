@@ -413,8 +413,10 @@ const ContributionsPage: React.FC = () => {
                     variant="outline"
                     className="justify-start border-border hover:bg-primary hover:text-primary-foreground text-left"
                     onClick={() => {
+                      const now = new Date();
+                      const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
                       setSelectedType(type);
-                      setFormData({ contribution_date: new Date().toISOString().split("T")[0] });
+                      setFormData({ contribution_date: localDate, closing_date: localDate });
                     }}
                   >
                     <span className="flex-1">{TYPE_LABELS[type]}</span>
