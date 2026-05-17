@@ -17,7 +17,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Flame, Sun, Snowflake } from "lucide-react";
+import { Plus, Flame, Sun, Snowflake, Bell } from "lucide-react";
 import { useGroupId } from "@/hooks/useGroupId";
 import { sortByText } from "@/lib/sortByText";
 import { useLocation } from "react-router-dom";
@@ -327,6 +327,24 @@ const ContributionsPage: React.FC = () => {
       toast.success("Indicação aceita");
     },
     onError: (e: any) => toast.error(e.message || "Erro ao aceitar a indicação"),
+  });
+
+  const nudgeMutation = useMutation({
+    mutationFn: async ({ recipientId, title, message, contributionId }: {
+      recipientId: string; title: string; message: string; contributionId: string;
+    }) => {
+      const { error } = await supabase.from("notifications").insert({
+        user_id: recipientId,
+        title,
+        message,
+        type: "reminder",
+        contribution_id: contributionId,
+        read: false,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => toast.success("Lembrete enviado!"),
+    onError: (e: any) => toast.error(e.message || "Erro ao enviar lembrete"),
   });
 
   const handleChange = (field: string, value: string) => {
@@ -897,6 +915,25 @@ const ContributionsPage: React.FC = () => {
                       </Button>
                     </div>
                   )}
+
+                  {previewItem.meeting_confirmation_status === "pending" && previewItem.user_id === user?.id && previewItem.meeting_member_id && (
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      <Button
+                        variant="outline"
+                        className="border-border gap-2"
+                        onClick={() => nudgeMutation.mutate({
+                          recipientId: previewItem.meeting_member_id!,
+                          title: "Lembrete: Téte-a-téte aguardando confirmação",
+                          message: `${currentProfile?.full_name || "Um membro"} está aguardando que você confirme o Téte-a-téte registrado. Acesse Minhas TRN's para confirmar e pontuar.`,
+                          contributionId: previewItem.id,
+                        })}
+                        disabled={nudgeMutation.isPending}
+                      >
+                        <Bell className="h-4 w-4" />
+                        Lembrar membro
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -951,6 +988,25 @@ const ContributionsPage: React.FC = () => {
                         disabled={acceptReferralMutation.isPending}
                       >
                         Aceitar indicação
+                      </Button>
+                    </div>
+                  )}
+
+                  {previewItem.user_id === user?.id && normalizeReferralStatus(previewItem.referral_status) === "pending" && previewItem.referred_to && (
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      <Button
+                        variant="outline"
+                        className="border-border gap-2"
+                        onClick={() => nudgeMutation.mutate({
+                          recipientId: previewItem.referred_to!,
+                          title: "Lembrete: Indicação aguardando aceite",
+                          message: `${currentProfile?.full_name || "Um membro"} está aguardando que você aceite a indicação de ${previewItem.contact_name || "um contato"}. Acesse Minhas TRN's ou Notificações para aceitar.`,
+                          contributionId: previewItem.id,
+                        })}
+                        disabled={nudgeMutation.isPending}
+                      >
+                        <Bell className="h-4 w-4" />
+                        Lembrar membro
                       </Button>
                     </div>
                   )}
