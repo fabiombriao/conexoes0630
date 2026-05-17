@@ -58,21 +58,13 @@ const REFERRAL_STATUS_META: Record<
   string,
   { label: string; className: string }
 > = {
-  new: {
-    label: "Nova",
-    className: "bg-primary/15 text-primary border-primary/25",
-  },
   pending: {
-    label: "Em andamento",
+    label: "Pendente",
     className: "bg-warning/15 text-warning border-warning/25",
   },
-  closed_won: {
-    label: "Fechada",
+  accepted: {
+    label: "Aceita",
     className: "bg-success/15 text-success border-success/25",
-  },
-  closed_lost: {
-    label: "Perdida",
-    className: "bg-destructive/15 text-destructive border-destructive/25",
   },
 };
 
@@ -82,6 +74,16 @@ const normalizeText = (value: string) =>
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
 
+const fixMojibake = (str: string): string => {
+  if (!str) return str;
+  try {
+    const bytes = new Uint8Array([...str].map((c) => c.charCodeAt(0)));
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    return str;
+  }
+};
+
 const isReferralNotification = (notification: NotificationRow) => {
   const contributionId = getNotificationContributionId(notification);
   return (
@@ -89,6 +91,9 @@ const isReferralNotification = (notification: NotificationRow) => {
     Boolean(contributionId)
   );
 };
+
+const normalizeReferralStatus = (status: string | null | undefined) =>
+  status === "accepted" || status === "closed_won" ? "accepted" : "pending";
 
 const extractReferralContactName = (message: string) => {
   const match = message.match(/:\s*(.+)\s*$/);
@@ -498,8 +503,8 @@ const NotificationsPage: React.FC = () => {
                     <div className="mt-1.5 h-2 w-2 rounded-full bg-primary shrink-0" />
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-sm">{n.title}</p>
-                    <p className="text-sm text-muted-foreground">{n.message}</p>
+                    <p className="font-medium text-sm">{fixMojibake(n.title)}</p>
+                    <p className="text-sm text-muted-foreground">{fixMojibake(n.message)}</p>
                     {isReferralNotification(n) && (
                       <p className="text-xs text-muted-foreground mt-1">
                         Enviado por: {getReferralSenderLabel(n)}
@@ -548,10 +553,10 @@ const NotificationsPage: React.FC = () => {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="font-medium text-sm">
-                        {activeReferralSourceNotification.title}
+                        {fixMojibake(activeReferralSourceNotification.title)}
                       </p>
                       <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                        {activeReferralSourceNotification.message}
+                        {fixMojibake(activeReferralSourceNotification.message)}
                       </p>
                     </div>
                     <p className="text-xs text-muted-foreground shrink-0">
@@ -606,15 +611,19 @@ const NotificationsPage: React.FC = () => {
                     </p>
                   </div>
                   {activeReferral.referral_status &&
-                    REFERRAL_STATUS_META[activeReferral.referral_status] && (
+                    REFERRAL_STATUS_META[normalizeReferralStatus(activeReferral.referral_status)] && (
                       <Badge
                         className={
-                          REFERRAL_STATUS_META[activeReferral.referral_status]
+                          REFERRAL_STATUS_META[
+                            normalizeReferralStatus(activeReferral.referral_status)
+                          ]
                             .className
                         }
                       >
                         {
-                          REFERRAL_STATUS_META[activeReferral.referral_status]
+                          REFERRAL_STATUS_META[
+                            normalizeReferralStatus(activeReferral.referral_status)
+                          ]
                             .label
                         }
                       </Badge>
@@ -684,8 +693,7 @@ const NotificationsPage: React.FC = () => {
                   </p>
                 </div>
 
-                {activeReferral.referral_status === "new" ||
-                !activeReferral.referral_status ? (
+                {normalizeReferralStatus(activeReferral.referral_status) === "pending" ? (
                   <div className="flex flex-wrap gap-2 pt-2">
                     <Button
                       className="font-semibold"

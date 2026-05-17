@@ -82,10 +82,8 @@ const ONE_TO_ONE_STATUS_META: Record<string, { label: string; className: string 
 };
 
 const REFERRAL_STATUS_META: Record<string, { label: string; className: string }> = {
-  new: { label: "Nova", className: "bg-primary/15 text-primary border-primary/25" },
-  pending: { label: "Em andamento", className: "bg-warning/15 text-warning border-warning/25" },
-  closed_won: { label: "Fechada", className: "bg-success/15 text-success border-success/25" },
-  closed_lost: { label: "Perdida", className: "bg-destructive/15 text-destructive border-destructive/25" },
+  pending: { label: "Pendente", className: "bg-warning/15 text-warning border-warning/25" },
+  accepted: { label: "Aceita", className: "bg-success/15 text-success border-success/25" },
 };
 
 const TOPICS = ["Apresentação", "GAINS", "Oportunidades", "Estratégia", "Suporte"];
@@ -94,6 +92,9 @@ const getCurrentMonthKey = () => {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
 };
+
+const normalizeReferralStatus = (status: string | null | undefined) =>
+  status === "accepted" || status === "closed_won" ? "accepted" : "pending";
 
 const ContributionsPage: React.FC = () => {
   const { user } = useAuth();
@@ -107,13 +108,27 @@ const ContributionsPage: React.FC = () => {
   const [previewItem, setPreviewItem] = useState<ContributionRow | null>(null);
   const receivedReferralsRef = useRef<HTMLDivElement | null>(null);
 
+  const { data: currentProfile } = useQuery({
+    queryKey: ["current-profile", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .eq("id", user!.id)
+        .single();
+      if (error) throw error;
+      return data as { id: string; full_name: string | null };
+    },
+    enabled: !!user,
+  });
+
   const { data: contributions, isLoading } = useQuery<ContributionRow[]>({
     queryKey: ["contributions", user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("contributions")
         .select("id, user_id, group_id, type, contribution_date, notes, contact_name, contact_phone, contact_email, referral_category, temperature, referral_action, referral_description, referred_to, business_value, is_repeat_business, closing_date, meeting_location, meeting_topics, meeting_member_id, meeting_date, meeting_confirmation_status, meeting_confirmed_by, meeting_confirmed_at, meeting_declined_by, meeting_declined_at, created_at")
-        .eq("user_id", user!.id)
+        .or(`user_id.eq.${user!.id},and(meeting_member_id.eq.${user!.id},type.eq.one_to_one,meeting_confirmation_status.eq.confirmed)`)
         .in("type", ["one_to_one", "referral", "onf"])
         .order("contribution_date", { ascending: false });
       if (error) throw error;
@@ -336,6 +351,10 @@ const ContributionsPage: React.FC = () => {
   ) => {
     if (!memberId) return fallback;
 
+    if (memberId === user?.id) {
+      return currentProfile?.full_name?.trim() || "Você";
+    }
+
     const memberName = sortedGroupMembers
       .find((m) => m.user_id === memberId)
       ?.full_name?.trim();
@@ -345,7 +364,8 @@ const ContributionsPage: React.FC = () => {
 
   const getContributionTitle = (c: ContributionRow) => {
     if (c.type === "one_to_one") {
-      return getMemberLabel(c.meeting_member_id);
+      const otherId = c.user_id === user?.id ? c.meeting_member_id : c.user_id;
+      return getMemberLabel(otherId);
     }
     if (c.type === "referral") {
       return c.contact_name || "Recomendação";
@@ -392,7 +412,10 @@ const ContributionsPage: React.FC = () => {
                     key={type}
                     variant="outline"
                     className="justify-start border-border hover:bg-primary hover:text-primary-foreground text-left"
-                    onClick={() => setSelectedType(type)}
+                    onClick={() => {
+                      setSelectedType(type);
+                      setFormData({ contribution_date: new Date().toISOString().split("T")[0] });
+                    }}
                   >
                     <span className="flex-1">{TYPE_LABELS[type]}</span>
                     <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full ml-2">
@@ -618,9 +641,7 @@ const ContributionsPage: React.FC = () => {
                 ) : (
                   <div className="space-y-3">
                     {receivedReferrals.map((item) => {
-                      const statusMeta = item.referral_status
-                        ? REFERRAL_STATUS_META[item.referral_status]
-                        : null;
+                      const statusMeta = REFERRAL_STATUS_META[normalizeReferralStatus(item.referral_status)];
 
                       return (
                         <Card
@@ -828,7 +849,9 @@ const ContributionsPage: React.FC = () => {
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">Com quem foi</Label>
                   <p className="text-sm font-medium">
-                    {getMemberLabel(previewItem.meeting_member_id)}
+                    {previewItem.user_id === user?.id
+                      ? getMemberLabel(previewItem.meeting_member_id)
+                      : getMemberLabel(previewItem.user_id)}
                   </p>
                 </div>
                   <div className="space-y-1">
@@ -913,7 +936,7 @@ const ContributionsPage: React.FC = () => {
                     <p className="text-sm whitespace-pre-wrap">{previewItem.notes || "—"}</p>
                   </div>
 
-                  {previewItem.referred_to === user?.id && (!previewItem.referral_status || previewItem.referral_status === "new") && (
+                  {previewItem.referred_to === user?.id && normalizeReferralStatus(previewItem.referral_status) === "pending" && (
                     <div className="flex flex-wrap gap-2 pt-2">
                       <Button
                         className="font-semibold"

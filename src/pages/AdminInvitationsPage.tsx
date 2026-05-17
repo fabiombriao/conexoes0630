@@ -29,11 +29,12 @@ const TEMP_LABELS: Record<string, { label: string; variant: "default" | "seconda
 };
 
 const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  new: { label: "Nova", variant: "outline" },
-  pending: { label: "Em andamento", variant: "default" },
-  closed_won: { label: "Fechada ✅", variant: "default" },
-  closed_lost: { label: "Perdida", variant: "destructive" },
+  pending: { label: "Pendente", variant: "outline" },
+  accepted: { label: "Aceita", variant: "default" },
 };
+
+const normalizeReferralStatus = (status: string | null | undefined) =>
+  status === "accepted" || status === "closed_won" ? "accepted" : "pending";
 
 const AdminInvitationsPage: React.FC = () => {
   const { isSuperAdmin, can, isPermissionsLoading } = usePermissions();
@@ -90,7 +91,7 @@ const AdminInvitationsPage: React.FC = () => {
         case "contact": va = a.contact_name || ""; vb = b.contact_name || ""; break;
         case "category": va = a.referral_category || ""; vb = b.referral_category || ""; break;
         case "temperature": va = a.temperature || ""; vb = b.temperature || ""; break;
-        case "status": va = a.referral_status || ""; vb = b.referral_status || ""; break;
+        case "status": va = normalizeReferralStatus(a.referral_status); vb = normalizeReferralStatus(b.referral_status); break;
         default: va = a.contribution_date; vb = b.contribution_date;
       }
       return sortDir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
@@ -116,7 +117,7 @@ const AdminInvitationsPage: React.FC = () => {
       r.contact_name || "",
       r.referral_category || "",
       TEMP_LABELS[r.temperature]?.label || r.temperature || "",
-      STATUS_LABELS[r.referral_status]?.label || r.referral_status || "",
+      STATUS_LABELS[normalizeReferralStatus(r.referral_status)]?.label || "Pendente",
       r.contribution_date ? format(new Date(r.contribution_date + "T12:00:00"), "dd/MM/yyyy") : "",
     ]);
     const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
@@ -209,7 +210,8 @@ const AdminInvitationsPage: React.FC = () => {
               <TableBody>
                 {paged.map((r: any) => {
                   const tempInfo = TEMP_LABELS[r.temperature] || { label: r.temperature || "—", variant: "outline" as const };
-                  const statusInfo = STATUS_LABELS[r.referral_status] || { label: r.referral_status || "—", variant: "outline" as const };
+                  const normalizedStatus = normalizeReferralStatus(r.referral_status);
+                  const statusInfo = STATUS_LABELS[normalizedStatus] || { label: "Pendente", variant: "outline" as const };
                   return (
                     <TableRow key={r.id}>
                       <TableCell>
