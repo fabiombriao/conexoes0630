@@ -31,6 +31,10 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     return <Navigate to="/login" replace />;
   }
 
+  if (accountStatus === "suspended") {
+    return <Navigate to="/suspended" replace />;
+  }
+
   if (
     signatureState === "unsigned" &&
     location.pathname !== "/termo-compromisso" &&

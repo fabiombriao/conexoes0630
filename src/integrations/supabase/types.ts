@@ -806,6 +806,9 @@ export type Database = {
           professional_title: string | null
           profile_completed: boolean | null
           status: string
+          suspended_at: string | null
+          suspended_by: string | null
+          suspension_reason: string | null
           updated_at: string
           vcr_score: number | null
           video_url: string | null
@@ -832,6 +835,9 @@ export type Database = {
           professional_title?: string | null
           profile_completed?: boolean | null
           status?: string
+          suspended_at?: string | null
+          suspended_by?: string | null
+          suspension_reason?: string | null
           updated_at?: string
           vcr_score?: number | null
           video_url?: string | null
@@ -858,6 +864,9 @@ export type Database = {
           professional_title?: string | null
           profile_completed?: boolean | null
           status?: string
+          suspended_at?: string | null
+          suspended_by?: string | null
+          suspension_reason?: string | null
           updated_at?: string
           vcr_score?: number | null
           video_url?: string | null

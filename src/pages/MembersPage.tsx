@@ -11,13 +11,15 @@ import {
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Users, Search, ShieldCheck } from "lucide-react";
+import { Users, Search, ShieldCheck, Ban } from "lucide-react";
 import { PromoteMemberDialog } from "@/components/PromoteMemberDialog";
+import { SuspendMemberDialog } from "@/components/SuspendMemberDialog";
 
 const MembersPage: React.FC = () => {
   const [search, setSearch] = useState("");
   const [selectedMember, setSelectedMember] = useState<any>(null);
   const [promoteTarget, setPromoteTarget] = useState<any>(null);
+  const [suspendTarget, setSuspendTarget] = useState<any>(null);
   const { isSuperAdmin } = usePermissions();
 
   const { data: members, isLoading } = useQuery({
@@ -131,7 +133,7 @@ const MembersPage: React.FC = () => {
             <>
               <MemberProfile profile={selectedMember} />
               {isSuperAdmin && (
-                <div className="px-6 pb-6">
+                <div className="px-6 pb-6 space-y-2">
                   <Button
                     onClick={() => { setSelectedMember(null); setPromoteTarget(selectedMember); }}
                     variant="outline"
@@ -139,6 +141,14 @@ const MembersPage: React.FC = () => {
                   >
                     <ShieldCheck className="h-4 w-4" />
                     Promover a Admin
+                  </Button>
+                  <Button
+                    onClick={() => { setSelectedMember(null); setSuspendTarget(selectedMember); }}
+                    variant="outline"
+                    className="w-full border-destructive text-destructive hover:bg-destructive/10 gap-2"
+                  >
+                    <Ban className="h-4 w-4" />
+                    Suspender Membro
                   </Button>
                 </div>
               )}
@@ -153,6 +163,16 @@ const MembersPage: React.FC = () => {
           onOpenChange={(open) => { if (!open) setPromoteTarget(null); }}
           memberId={promoteTarget.id}
           memberName={promoteTarget.full_name || "Membro"}
+        />
+      )}
+
+      {suspendTarget && (
+        <SuspendMemberDialog
+          open={!!suspendTarget}
+          onOpenChange={(open) => { if (!open) setSuspendTarget(null); }}
+          memberId={suspendTarget.id}
+          memberName={suspendTarget.full_name || "Membro"}
+          mode="suspend"
         />
       )}
     </div>

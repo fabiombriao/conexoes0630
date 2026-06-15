@@ -7,6 +7,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import AppLayout from "@/components/AppLayout";
 import LoginPage from "@/pages/LoginPage";
 import PendingApprovalPage from "@/pages/PendingApprovalPage";
+import SuspendedPage from "@/pages/SuspendedPage";
 import Dashboard from "@/pages/Dashboard";
 import ContributionsPage from "@/pages/ContributionsPage";
 import ReportsPage from "@/pages/ReportsPage";
@@ -38,6 +39,7 @@ const App = () => (
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/pending" element={<PendingApprovalPage />} />
+            <Route path="/suspended" element={<SuspendedPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/rsvp/:token" element={<RSVPPage />} />
             <Route
