@@ -92,7 +92,7 @@ on public.guest_attendance_sessions
 for select
 to authenticated
 using (
-  public.has_role('admin', auth.uid())
+  public.has_role(auth.uid(), 'admin')
   or public.get_user_group_id(auth.uid()) = group_id
 );
 
@@ -104,7 +104,7 @@ for insert
 to authenticated
 with check (
   public.get_user_group_id(auth.uid()) = group_id
-  and (public.has_role('admin', auth.uid()) or public.has_role('group_leader', auth.uid()))
+  and (public.has_role(auth.uid(), 'admin') or public.has_role(auth.uid(), 'group_leader'))
 );
 
 -- Sessions: only superadmin can approve/reject.
@@ -113,8 +113,8 @@ create policy "guest_sessions_update_superadmin"
 on public.guest_attendance_sessions
 for update
 to authenticated
-using (public.has_role('admin', auth.uid()))
-with check (public.has_role('admin', auth.uid()));
+using (public.has_role(auth.uid(), 'admin'))
+with check (public.has_role(auth.uid(), 'admin'));
 
 -- Records: members of the group (or superadmin) can read via the session.
 drop policy if exists "guest_records_select" on public.guest_attendance_records;
@@ -123,7 +123,7 @@ on public.guest_attendance_records
 for select
 to authenticated
 using (
-  public.has_role('admin', auth.uid())
+  public.has_role(auth.uid(), 'admin')
   or exists (
     select 1
     from public.guest_attendance_sessions s
@@ -144,7 +144,7 @@ with check (
     from public.guest_attendance_sessions s
     where s.id = session_id
       and s.group_id = public.get_user_group_id(auth.uid())
-      and (public.has_role('admin', auth.uid()) or public.has_role('group_leader', auth.uid()))
+      and (public.has_role(auth.uid(), 'admin') or public.has_role(auth.uid(), 'group_leader'))
   )
 );
 
