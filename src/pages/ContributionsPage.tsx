@@ -59,6 +59,7 @@ type GroupMemberOption = {
   user_id: string;
   full_name: string;
   avatar_url: string | null;
+  status: string | null;
 };
 
 const TYPE_LABELS: Record<ContributionType, string> = {
@@ -188,8 +189,7 @@ const ContributionsPage: React.FC = () => {
       const userIds = members.map((m) => m.user_id);
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
-        .select("id, full_name, avatar_url")
-        .eq("status", "active")
+        .select("id, full_name, avatar_url, status")
         .not("full_name", "is", null)
         .neq("full_name", "")
         .in("id", userIds);
@@ -201,13 +201,17 @@ const ContributionsPage: React.FC = () => {
           user_id: p.id,
           full_name: p.full_name || "",
           avatar_url: p.avatar_url,
+          status: p.status,
         }));
     },
     enabled: !!groupId,
   });
 
+  // Lista para os seletores de "Nova Contribuição": somente membros ativos.
   const sortedGroupMembers = sortByText(
-    (groupMembers ?? []).filter((m) => m.user_id !== user?.id),
+    (groupMembers ?? []).filter(
+      (m) => m.user_id !== user?.id && m.status === "active",
+    ),
     (m) => m.full_name,
   );
 
@@ -379,11 +383,17 @@ const ContributionsPage: React.FC = () => {
       return currentProfile?.full_name?.trim() || "Você";
     }
 
-    const memberName = sortedGroupMembers
-      .find((m) => m.user_id === memberId)
-      ?.full_name?.trim();
+    // Busca em todos os membros do grupo (inclusive suspensos), para que o
+    // nome continue aparecendo mesmo quando o membro foi suspenso/removido.
+    const member = (groupMembers ?? []).find((m) => m.user_id === memberId);
+    const memberName = member?.full_name?.trim();
 
-    return memberName || fallback;
+    if (!memberName) return fallback;
+    if (member?.status === "suspended") return `${memberName} (Membro suspenso)`;
+    if (member?.status && member.status !== "active") {
+      return `${memberName} (Membro removido)`;
+    }
+    return memberName;
   };
 
   const getContributionTitle = (c: ContributionRow) => {

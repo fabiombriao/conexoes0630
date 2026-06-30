@@ -52,6 +52,7 @@ type ReferralContributionRow = {
 type ProfileRow = {
   id: string;
   full_name: string | null;
+  status: string | null;
 };
 
 const REFERRAL_STATUS_META: Record<
@@ -236,7 +237,7 @@ const NotificationsPage: React.FC = () => {
 
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, full_name")
+        .select("id, full_name, status")
         .in("id", senderIds);
       if (error) throw error;
       return (data || []) as ProfileRow[];
@@ -247,7 +248,10 @@ const NotificationsPage: React.FC = () => {
   const senderNameMap = useMemo(
     () =>
       new Map(
-        senderProfiles.map((profile) => [profile.id, profile.full_name || ""]),
+        senderProfiles.map((profile) => [
+          profile.id,
+          { full_name: profile.full_name || "", status: profile.status },
+        ]),
       ),
     [senderProfiles],
   );
@@ -256,10 +260,16 @@ const NotificationsPage: React.FC = () => {
     notification: NotificationRow | null,
     referral: ReferralContributionRow | null = null,
   ) => {
-    const profileName = referral
-      ? senderNameMap.get(referral.user_id)?.trim()
-      : "";
-    if (profileName) return profileName;
+    const sender = referral ? senderNameMap.get(referral.user_id) : undefined;
+    const profileName = sender?.full_name?.trim();
+    if (profileName) {
+      // Mantém o nome visível mesmo para membros suspensos/removidos.
+      if (sender?.status === "suspended") return `${profileName} (Membro suspenso)`;
+      if (sender?.status && sender.status !== "active") {
+        return `${profileName} (Membro removido)`;
+      }
+      return profileName;
+    }
 
     if (notification) {
       const extractedName = extractReferralIdentifiers(
