@@ -107,6 +107,8 @@ const ContributionsPage: React.FC = () => {
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [previewItem, setPreviewItem] = useState<ContributionRow | null>(null);
+  const [editingValue, setEditingValue] = useState(false);
+  const [editValueInput, setEditValueInput] = useState("");
   const receivedReferralsRef = useRef<HTMLDivElement | null>(null);
 
   const todayLocal = useMemo(() => {
@@ -331,6 +333,28 @@ const ContributionsPage: React.FC = () => {
       toast.success("Indicação aceita");
     },
     onError: (e: any) => toast.error(e.message || "Erro ao aceitar a indicação"),
+  });
+
+  const updateDealValueMutation = useMutation({
+    mutationFn: async ({ contributionId, value }: { contributionId: string; value: number }) => {
+      const { error } = await supabase.rpc("update_deal_value", {
+        _contribution_id: contributionId,
+        _business_value: value,
+      });
+      if (error) throw error;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["contributions"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["recent-activity"] });
+      queryClient.invalidateQueries({ queryKey: ["report-contributions"] });
+      setPreviewItem((prev) =>
+        prev && prev.id === variables.contributionId ? { ...prev, business_value: variables.value } : prev
+      );
+      setEditingValue(false);
+      toast.success("Valor atualizado!");
+    },
+    onError: (e: any) => toast.error(e.message || "Erro ao atualizar valor"),
   });
 
   const nudgeMutation = useMutation({
@@ -844,7 +868,15 @@ const ContributionsPage: React.FC = () => {
         </div>
       )}
 
-      <Dialog open={!!previewItem} onOpenChange={(open) => !open && setPreviewItem(null)}>
+      <Dialog
+        open={!!previewItem}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPreviewItem(null);
+            setEditingValue(false);
+          }
+        }}
+      >
         <DialogContent className="bg-popover border-border max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1031,9 +1063,57 @@ const ContributionsPage: React.FC = () => {
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-1">
                       <Label className="text-xs text-muted-foreground">Valor</Label>
-                      <p className="text-sm font-medium">
-                        R$ {Number(previewItem.business_value || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                      </p>
+                      {editingValue ? (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={editValueInput}
+                            onChange={(e) => setEditValueInput(e.target.value)}
+                            className="h-9 max-w-[160px]"
+                            autoFocus
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => {
+                              const parsed = parseFloat(editValueInput);
+                              if (isNaN(parsed) || parsed < 0) {
+                                toast.error("Informe um valor válido");
+                                return;
+                              }
+                              updateDealValueMutation.mutate({ contributionId: previewItem.id, value: parsed });
+                            }}
+                            disabled={updateDealValueMutation.isPending}
+                          >
+                            Salvar
+                          </Button>
+                          <Button type="button" size="sm" variant="ghost" onClick={() => setEditingValue(false)}>
+                            Cancelar
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium">
+                            R$ {Number(previewItem.business_value || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                          </p>
+                          {previewItem.user_id === user?.id && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 px-2 text-xs"
+                              onClick={() => {
+                                setEditValueInput(String(previewItem.business_value ?? ""));
+                                setEditingValue(true);
+                              }}
+                            >
+                              Editar
+                            </Button>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs text-muted-foreground">Tipo</Label>

@@ -1014,6 +1014,10 @@ export type Database = {
         Args: { _accepted: boolean; _contribution_id: string }
         Returns: undefined
       }
+      update_deal_value: {
+        Args: { _business_value: number; _contribution_id: string }
+        Returns: undefined
+      }
       upsert_ranking_points: {
         Args: {
           _deal?: number
