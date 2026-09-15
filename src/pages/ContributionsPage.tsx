@@ -232,7 +232,7 @@ const ContributionsPage: React.FC = () => {
         temperature: data.temperature,
         referral_action: data.referral_action,
         referral_description: data.referral_description,
-        referred_to: data.referred_to,
+        referred_to: data.referred_to || null,
         business_value: data.business_value ? parseFloat(data.business_value) : null,
         is_repeat_business: data.is_repeat_business === "true",
         closing_date: data.closing_date,
