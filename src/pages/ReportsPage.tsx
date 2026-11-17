@@ -32,6 +32,13 @@ const PRESETS = [
   { label: "Mês anterior", days: 60 },
 ];
 
+// Valor já fechado pelo grupo ANTES de os negócios passarem a ser registrados no
+// app. Entra somado ao "Total R$" do relatório do grupo (não do relatório pessoal).
+const PRE_APP_DEAL_VALUE = 4_100_000;
+
+const formatBRL = (value: number) =>
+  `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+
 const ReportsPage: React.FC = () => {
   const { user } = useAuth();
   const { isSuperAdmin, can } = usePermissions();
@@ -134,11 +141,17 @@ const ReportsPage: React.FC = () => {
     return Object.entries(weeks).slice(-12).map(([week, count]) => ({ week, indicações: count }));
   }, [contributions]);
 
-  const metrics = [
+  const preAppValue = isFullReport ? PRE_APP_DEAL_VALUE : 0;
+
+  const metrics: { label: string; value: string | number; note?: string }[] = [
     { label: "Téte a téte", value: totalTT },
     { label: "Recomendações", value: totalIndications },
     { label: "Negócios Fechados", value: totalDeals },
-    { label: "Total R$", value: `R$ ${totalDealValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` },
+    {
+      label: "Total R$",
+      value: formatBRL(totalDealValue + preAppValue),
+      note: preAppValue ? `Inclui ${formatBRL(preAppValue)} fechados antes do app` : undefined,
+    },
     { label: "Convidados Presentes", value: guestCount ?? 0 },
   ];
 
@@ -151,7 +164,8 @@ const ReportsPage: React.FC = () => {
       const val = c.business_value || "";
       return `${c.contribution_date},${type},${detail},${val}`;
     }).join("\n");
-    const blob = new Blob([header + rows], { type: "text/csv" });
+    const preAppRow = preAppValue ? `\n,Valor fechado antes do app,,${preAppValue}` : "";
+    const blob = new Blob([header + rows + preAppRow], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -193,6 +207,7 @@ const ReportsPage: React.FC = () => {
                 <CardContent className="p-4 text-center">
                   <p className="text-xs text-muted-foreground uppercase tracking-wide">{m.label}</p>
                   <p className="text-2xl font-display font-bold mt-1">{m.value}</p>
+                  {m.note && <p className="text-[11px] text-muted-foreground mt-1">{m.note}</p>}
                 </CardContent>
               </Card>
             ))}
