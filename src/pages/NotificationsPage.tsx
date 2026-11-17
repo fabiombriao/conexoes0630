@@ -355,7 +355,7 @@ const NotificationsPage: React.FC = () => {
       activeReferralNotification.message,
     );
     const candidates = receivedReferrals.filter((referral) => {
-      const senderName = senderNameMap.get(referral.user_id)?.trim() || "";
+      const senderName = senderNameMap.get(referral.user_id)?.full_name.trim() || "";
       const senderMatches = identifiers.senderName
         ? !senderName ||
           normalizeText(senderName) === normalizeText(identifiers.senderName)

@@ -53,6 +53,57 @@ export type Database = {
           },
         ]
       }
+      attendance_self_checkins: {
+        Row: {
+          accuracy_m: number | null
+          checked_in_at: string
+          distance_m: number
+          group_id: string
+          id: string
+          latitude: number
+          longitude: number
+          member_id: string
+          session_date: string
+        }
+        Insert: {
+          accuracy_m?: number | null
+          checked_in_at?: string
+          distance_m: number
+          group_id: string
+          id?: string
+          latitude: number
+          longitude: number
+          member_id: string
+          session_date: string
+        }
+        Update: {
+          accuracy_m?: number | null
+          checked_in_at?: string
+          distance_m?: number
+          group_id?: string
+          id?: string
+          latitude?: number
+          longitude?: number
+          member_id?: string
+          session_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_self_checkins_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_self_checkins_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       attendance_sessions: {
         Row: {
           approved_at: string | null
@@ -958,6 +1009,32 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      confirm_self_attendance: {
+        Args: {
+          _accuracy?: number | null
+          _latitude: number
+          _longitude: number
+        }
+        Returns: Json
+      }
+      update_deal: {
+        Args: {
+          _business_value: number
+          _contribution_id: string
+          _notes: string | null
+          _referred_to: string | null
+        }
+        Returns: undefined
+      }
+      haversine_distance_m: {
+        Args: {
+          _lat1: number
+          _lat2: number
+          _lon1: number
+          _lon2: number
+        }
+        Returns: number
+      }
       broadcast_notification: {
         Args: {
           _link?: string

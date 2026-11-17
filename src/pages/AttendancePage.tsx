@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Check, X, RefreshCw, ClipboardList, FlaskConical } from "lucide-react";
+import { Check, X, RefreshCw, ClipboardList, FlaskConical, MapPin } from "lucide-react";
 import { useGroupId } from "@/hooks/useGroupId";
 import { sortByText } from "@/lib/sortByText";
 import AttendanceSemesterTable from "@/components/AttendanceSemesterTable";
@@ -115,6 +115,50 @@ const AttendancePage: React.FC = () => {
     },
     enabled: !!groupId,
   });
+
+  // Membros que confirmaram a própria presença pelo app (GPS, raio de 100 m) na data da chamada.
+  const { data: selfCheckins, refetch: refetchSelfCheckins } = useQuery({
+    queryKey: ["self-checkins", groupId, sessionDate],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("attendance_self_checkins")
+        .select("member_id, checked_in_at, distance_m")
+        .eq("group_id", groupId)
+        .eq("session_date", sessionDate);
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!groupId && !!sessionDate,
+  });
+
+  const selfCheckinByMember = useMemo(
+    () => new Map((selfCheckins ?? []).map((c) => [c.member_id, c])),
+    [selfCheckins],
+  );
+
+  // Lista gerada pelas confirmações: confirmou = presente; não confirmou = ausente.
+  // Quem o admin já marcou como substituído continua substituído ao atualizar.
+  const statusFromCheckins = (memberId: string, confirmed: Set<string>, previous?: AttendanceStatus): AttendanceStatus => {
+    if (confirmed.has(memberId)) return "present";
+    return previous === "substituted" ? "substituted" : "absent";
+  };
+
+  const refreshFromCheckins = async () => {
+    const { data } = await refetchSelfCheckins();
+    const confirmed = new Set((data ?? []).map((c) => c.member_id));
+    setMemberAttendanceList((prev) =>
+      prev.map((m) => ({ ...m, status: statusFromCheckins(m.user_id, confirmed, m.status) })),
+    );
+    toast.success("Lista atualizada com as confirmações mais recentes.");
+  };
+
+  // Resumo para a tela inicial: quem já confirmou e quem ainda não, na data selecionada.
+  const checkinSummary = useMemo(() => {
+    const all = members ?? [];
+    const confirmed = all.filter((m: any) => selfCheckinByMember.has(m.user_id));
+    const pending = all.filter((m: any) => !selfCheckinByMember.has(m.user_id));
+    return { total: all.length, confirmed, pending };
+  }, [members, selfCheckinByMember]);
 
   const combinedSessions = useMemo(() => {
     const memberSessions = (sessions ?? []).map((s: any) => ({ ...s, _kind: "members" as const }));
@@ -226,7 +270,10 @@ const AttendancePage: React.FC = () => {
     onError: (e: any) => toast.error(e.message || "Erro ao enviar"),
   });
 
-  const openMembersAttendance = (test: boolean) => {
+  const openMembersAttendance = async (test: boolean) => {
+    // Busca as confirmações mais recentes antes de montar a lista.
+    const { data: freshCheckins } = await refetchSelfCheckins();
+    const confirmed = new Set((freshCheckins ?? []).map((c) => c.member_id));
     setOpenMode("members");
     setIsTest(test);
     setIsOpen(true);
@@ -239,7 +286,7 @@ const AttendancePage: React.FC = () => {
       user_id: m.user_id,
       full_name: m.profiles?.full_name || "",
       avatar_url: m.profiles?.avatar_url || null,
-      status: "present" as AttendanceStatus,
+      status: statusFromCheckins(m.user_id, confirmed),
       substitute_name: "",
     }));
     setMemberAttendanceList(memberList);
@@ -315,6 +362,21 @@ const AttendancePage: React.FC = () => {
           </Button>
         </div>
 
+        {openMode === "members" && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/40 bg-primary/5 p-3 text-sm">
+            <span className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-primary shrink-0" />
+              Lista gerada pelas confirmações no app:{" "}
+              {memberAttendanceList.filter((m) => selfCheckinByMember.has(m.user_id)).length} de{" "}
+              {memberAttendanceList.length} membros confirmaram. Quem não confirmou aparece como ausente; ajuste o que for
+              necessário antes de enviar.
+            </span>
+            <Button size="sm" variant="outline" onClick={refreshFromCheckins} className="border-border">
+              <RefreshCw className="h-3 w-3 mr-1" /> Atualizar confirmações
+            </Button>
+          </div>
+        )}
+
         <div className="space-y-2">
           {openMode === "members"
             ? memberAttendanceList.map((m) => (
@@ -327,7 +389,19 @@ const AttendancePage: React.FC = () => {
                         m.full_name[0]
                       )}
                     </div>
-                    <span className="font-medium flex-1 min-w-0 truncate">{m.full_name}</span>
+                    <div className="flex-1 min-w-0">
+                      <span className="font-medium block truncate">{m.full_name}</span>
+                      {selfCheckinByMember.has(m.user_id) && (
+                        <span className="flex items-center gap-1 text-xs text-success">
+                          <MapPin className="h-3 w-3" /> Confirmou presença às{" "}
+                          {new Date(selfCheckinByMember.get(m.user_id)!.checked_in_at).toLocaleTimeString("pt-BR", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            timeZone: "America/Sao_Paulo",
+                          })}
+                        </span>
+                      )}
+                    </div>
                     <div className="flex gap-1">
                       <Button
                         size="sm"
@@ -434,7 +508,7 @@ const AttendancePage: React.FC = () => {
           <Input type="date" value={sessionDate} onChange={(e) => setSessionDate(e.target.value)} className="bg-muted border-border" />
         </div>
         <Button onClick={() => openMembersAttendance(false)} className="font-bold uppercase tracking-wider">
-          <ClipboardList className="h-4 w-4 mr-2" /> Abrir Chamada (Membros)
+          <ClipboardList className="h-4 w-4 mr-2" /> Gerar Lista de Presença (Membros)
         </Button>
         <Button onClick={() => openGuestAttendance()} variant="outline" className="border-border">
           🎟️ Abrir Chamada (Convidados)
@@ -447,6 +521,47 @@ const AttendancePage: React.FC = () => {
           <FlaskConical className="h-4 w-4 mr-2" /> 🧪 Chamada Teste (Membros)
         </Button>
       </div>
+
+      <Card className="bg-card border-border">
+        <CardContent className="p-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-display font-bold text-lg flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-primary" /> Confirmações pelo app —{" "}
+              {new Date(sessionDate + "T12:00:00").toLocaleDateString("pt-BR")}
+            </h2>
+            <span className="text-sm text-muted-foreground">
+              {checkinSummary.confirmed.length} de {checkinSummary.total} confirmaram
+            </span>
+          </div>
+          {checkinSummary.confirmed.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Ninguém confirmou presença nesta data ainda. Os membros confirmam pelo Dashboard, estando a até 100 m do local.
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {checkinSummary.confirmed.map((m: any) => (
+                <span key={m.user_id} className="text-xs px-2 py-1 rounded bg-success/10 text-success">
+                  {m.profiles?.full_name}
+                </span>
+              ))}
+            </div>
+          )}
+          {checkinSummary.pending.length > 0 && checkinSummary.confirmed.length > 0 && (
+            <details className="text-sm">
+              <summary className="cursor-pointer text-muted-foreground">
+                Ainda não confirmaram ({checkinSummary.pending.length})
+              </summary>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {checkinSummary.pending.map((m: any) => (
+                  <span key={m.user_id} className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground">
+                    {m.profiles?.full_name}
+                  </span>
+                ))}
+              </div>
+            </details>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="space-y-3">
         <h2 className="font-display font-bold text-lg">Chamadas Enviadas</h2>

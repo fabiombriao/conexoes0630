@@ -17,7 +17,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Flame, Sun, Snowflake, Bell } from "lucide-react";
+import { Plus, Flame, Sun, Snowflake, Bell, Pencil } from "lucide-react";
 import { useGroupId } from "@/hooks/useGroupId";
 import { sortByText } from "@/lib/sortByText";
 import { useLocation } from "react-router-dom";
@@ -107,8 +107,8 @@ const ContributionsPage: React.FC = () => {
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [previewItem, setPreviewItem] = useState<ContributionRow | null>(null);
-  const [editingValue, setEditingValue] = useState(false);
-  const [editValueInput, setEditValueInput] = useState("");
+  const [editingDeal, setEditingDeal] = useState(false);
+  const [dealForm, setDealForm] = useState({ value: "", withMember: false, referredTo: "", notes: "" });
   const receivedReferralsRef = useRef<HTMLDivElement | null>(null);
 
   const todayLocal = useMemo(() => {
@@ -335,11 +335,23 @@ const ContributionsPage: React.FC = () => {
     onError: (e: any) => toast.error(e.message || "Erro ao aceitar a indicação"),
   });
 
-  const updateDealValueMutation = useMutation({
-    mutationFn: async ({ contributionId, value }: { contributionId: string; value: number }) => {
-      const { error } = await supabase.rpc("update_deal_value", {
+  const updateDealMutation = useMutation({
+    mutationFn: async ({
+      contributionId,
+      value,
+      referredTo,
+      notes,
+    }: {
+      contributionId: string;
+      value: number;
+      referredTo: string | null;
+      notes: string | null;
+    }) => {
+      const { error } = await supabase.rpc("update_deal", {
         _contribution_id: contributionId,
         _business_value: value,
+        _referred_to: referredTo,
+        _notes: notes,
       });
       if (error) throw error;
     },
@@ -349,12 +361,14 @@ const ContributionsPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ["recent-activity"] });
       queryClient.invalidateQueries({ queryKey: ["report-contributions"] });
       setPreviewItem((prev) =>
-        prev && prev.id === variables.contributionId ? { ...prev, business_value: variables.value } : prev
+        prev && prev.id === variables.contributionId
+          ? { ...prev, business_value: variables.value, referred_to: variables.referredTo, notes: variables.notes }
+          : prev
       );
-      setEditingValue(false);
-      toast.success("Valor atualizado!");
+      setEditingDeal(false);
+      toast.success("Negócio atualizado!");
     },
-    onError: (e: any) => toast.error(e.message || "Erro ao atualizar valor"),
+    onError: (e: any) => toast.error(e.message || "Erro ao atualizar negócio"),
   });
 
   const nudgeMutation = useMutation({
@@ -873,7 +887,7 @@ const ContributionsPage: React.FC = () => {
         onOpenChange={(open) => {
           if (!open) {
             setPreviewItem(null);
-            setEditingValue(false);
+            setEditingDeal(false);
           }
         }}
       >
@@ -1060,82 +1074,152 @@ const ContributionsPage: React.FC = () => {
 
               {previewItem.type === "onf" && (
                 <div className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Valor</Label>
-                      {editingValue ? (
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={editValueInput}
-                            onChange={(e) => setEditValueInput(e.target.value)}
-                            className="h-9 max-w-[160px]"
-                            autoFocus
-                          />
+                  {previewItem.user_id === user?.id && !editingDeal && (
+                    <div className="flex justify-end">
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-md shadow-orange-500/30"
+                        onClick={() => {
+                          setDealForm({
+                            value: String(previewItem.business_value ?? ""),
+                            withMember: !!previewItem.referred_to,
+                            referredTo: previewItem.referred_to ?? "",
+                            notes: previewItem.notes ?? "",
+                          });
+                          setEditingDeal(true);
+                        }}
+                      >
+                        <Pencil className="h-4 w-4 mr-2" /> Editar
+                      </Button>
+                    </div>
+                  )}
+
+                  {editingDeal ? (
+                    <div className="space-y-4 rounded-lg border border-orange-500/60 bg-orange-500/5 p-4">
+                      <div className="space-y-2">
+                        <Label>Valor do negócio (R$)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={dealForm.value}
+                          onChange={(e) => setDealForm((f) => ({ ...f, value: e.target.value }))}
+                          className="bg-muted border-border"
+                          autoFocus
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Negócio fechado com membro do grupo?</Label>
+                        <div className="flex gap-2">
                           <Button
                             type="button"
                             size="sm"
-                            onClick={() => {
-                              const parsed = parseFloat(editValueInput);
-                              if (isNaN(parsed) || parsed < 0) {
-                                toast.error("Informe um valor válido");
-                                return;
-                              }
-                              updateDealValueMutation.mutate({ contributionId: previewItem.id, value: parsed });
-                            }}
-                            disabled={updateDealValueMutation.isPending}
+                            variant={dealForm.withMember ? "default" : "outline"}
+                            className="border-border"
+                            onClick={() => setDealForm((f) => ({ ...f, withMember: true }))}
                           >
-                            Salvar
+                            Sim
                           </Button>
-                          <Button type="button" size="sm" variant="ghost" onClick={() => setEditingValue(false)}>
-                            Cancelar
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={!dealForm.withMember ? "default" : "outline"}
+                            className="border-border"
+                            onClick={() => setDealForm((f) => ({ ...f, withMember: false, referredTo: "" }))}
+                          >
+                            Não (cliente externo)
                           </Button>
                         </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
+                      </div>
+                      {dealForm.withMember && (
+                        <div className="space-y-2">
+                          <Label>Membro do grupo</Label>
+                          <select
+                            value={dealForm.referredTo}
+                            onChange={(e) => setDealForm((f) => ({ ...f, referredTo: e.target.value }))}
+                            className="flex h-10 w-full rounded-md border border-border bg-muted px-3 py-2 text-sm"
+                          >
+                            <option value="">Selecione o membro...</option>
+                            {sortedGroupMembers
+                              .filter((m) => m.user_id !== user?.id)
+                              .map((m) => (
+                                <option key={m.user_id} value={m.user_id}>
+                                  {m.full_name}
+                                </option>
+                              ))}
+                          </select>
+                        </div>
+                      )}
+                      <div className="space-y-2">
+                        <Label>Descrição do negócio</Label>
+                        <Textarea
+                          value={dealForm.notes}
+                          onChange={(e) => setDealForm((f) => ({ ...f, notes: e.target.value }))}
+                          className="bg-muted border-border"
+                          rows={3}
+                        />
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button type="button" variant="ghost" onClick={() => setEditingDeal(false)}>
+                          Cancelar
+                        </Button>
+                        <Button
+                          type="button"
+                          className="bg-orange-500 hover:bg-orange-600 text-white font-bold"
+                          disabled={updateDealMutation.isPending}
+                          onClick={() => {
+                            const parsed = parseFloat(dealForm.value);
+                            if (isNaN(parsed) || parsed < 0) {
+                              toast.error("Informe um valor válido");
+                              return;
+                            }
+                            if (dealForm.withMember && !dealForm.referredTo) {
+                              toast.error("Selecione o membro do grupo");
+                              return;
+                            }
+                            updateDealMutation.mutate({
+                              contributionId: previewItem.id,
+                              value: parsed,
+                              referredTo: dealForm.withMember ? dealForm.referredTo : null,
+                              notes: dealForm.notes.trim() || null,
+                            });
+                          }}
+                        >
+                          {updateDealMutation.isPending ? "Salvando..." : "Salvar alterações"}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">Valor</Label>
                           <p className="text-sm font-medium">
                             R$ {Number(previewItem.business_value || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                           </p>
-                          {previewItem.user_id === user?.id && (
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="ghost"
-                              className="h-6 px-2 text-xs"
-                              onClick={() => {
-                                setEditValueInput(String(previewItem.business_value ?? ""));
-                                setEditingValue(true);
-                              }}
-                            >
-                              Editar
-                            </Button>
-                          )}
                         </div>
-                      )}
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Tipo</Label>
-                      <p className="text-sm">{previewItem.is_repeat_business ? "Negócio recorrente" : "Novo negócio"}</p>
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Fechado com</Label>
-                    <p className="text-sm">
-                      {previewItem.referred_to
-                        ? getMemberLabel(previewItem.referred_to)
-                        : "Cliente externo"}
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Data do fechamento</Label>
-                    <p className="text-sm">{previewItem.closing_date ? new Date(previewItem.closing_date).toLocaleDateString("pt-BR") : "—"}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Observações</Label>
-                    <p className="text-sm whitespace-pre-wrap">{previewItem.notes || "—"}</p>
-                  </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">Tipo</Label>
+                          <p className="text-sm">{previewItem.is_repeat_business ? "Negócio recorrente" : "Novo negócio"}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Fechado com</Label>
+                        <p className="text-sm">
+                          {previewItem.referred_to ? getMemberLabel(previewItem.referred_to) : "Cliente externo"}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Data do fechamento</Label>
+                        <p className="text-sm">{previewItem.closing_date ? new Date(previewItem.closing_date).toLocaleDateString("pt-BR") : "—"}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Descrição do negócio</Label>
+                        <p className="text-sm whitespace-pre-wrap">{previewItem.notes || "—"}</p>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>

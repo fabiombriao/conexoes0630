@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DollarSign, Users, ArrowUpRight, Flame, Handshake, Send, FileCheck, Trophy, Clock3 } from "lucide-react";
 import { useGroupId } from "@/hooks/useGroupId";
+import SelfCheckInCard from "@/components/SelfCheckInCard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type DashboardContributionType = "one_to_one" | "referral" | "onf";
@@ -158,7 +159,8 @@ const Dashboard: React.FC = () => {
         .order("created_at", { ascending: false })
         .limit(10);
       if (error) throw error;
-      return data;
+      // O filtro .in("type", ...) acima garante que só vêm os 3 tipos exibidos.
+      return data as RecentActivityItem[];
     },
     enabled: !!user,
   });
@@ -226,6 +228,8 @@ const Dashboard: React.FC = () => {
           </Select>
         </div>
       </div>
+
+      <SelfCheckInCard />
 
       <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
         {statCards.map((stat) => (
