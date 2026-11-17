@@ -32,6 +32,22 @@ describe("describeSelfCheckIn", () => {
   });
 });
 
+describe("fora da janela (terça 06:30–09:00)", () => {
+  it("nunca é ok e explica o motivo", () => {
+    const early = describeSelfCheckIn({ status: "outside_window", reason: "too_early" });
+    const late = describeSelfCheckIn({ status: "outside_window", reason: "too_late" });
+    const day = describeSelfCheckIn({ status: "outside_window", reason: "wrong_day" });
+    expect([early.ok, late.ok, day.ok]).toEqual([false, false, false]);
+    expect(early.message).toContain("06:30");
+    expect(late.message).toContain("09:00");
+    expect(day.message).toContain("terças-feiras");
+  });
+
+  it("sem motivo informado cai na mensagem do dia da semana", () => {
+    expect(describeSelfCheckIn({ status: "outside_window" }).message).toContain("terças-feiras");
+  });
+});
+
 describe("describeGeolocationError", () => {
   it("diferencia permissão negada dos demais erros", () => {
     expect(describeGeolocationError(1)).toContain("Permissão");

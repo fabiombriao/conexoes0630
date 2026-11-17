@@ -535,7 +535,7 @@ const AttendancePage: React.FC = () => {
           </div>
           {checkinSummary.confirmed.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Ninguém confirmou presença nesta data ainda. Os membros confirmam pelo Dashboard, estando a até 100 m do local.
+              Ninguém confirmou presença nesta data ainda. Os membros confirmam pelo Dashboard, às terças-feiras das 06:30 às 09:00, estando a até 100 m do local.
             </p>
           ) : (
             <div className="flex flex-wrap gap-2">

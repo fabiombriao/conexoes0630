@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   describeGeolocationError,
   describeSelfCheckIn,
+  SELF_CHECKIN_WINDOW_LABEL,
   todayInMeetingTimeZone,
   type SelfCheckInResult,
 } from "@/lib/selfCheckIn";
@@ -117,7 +118,7 @@ const SelfCheckInCard: React.FC = () => {
             <div>
               <p className="font-display font-bold">Confirmar minha presença</p>
               <p className="text-sm text-muted-foreground">
-                Disponível apenas para quem estiver no local da reunião (até 100 m).
+                Disponível às {SELF_CHECKIN_WINDOW_LABEL}, apenas para quem estiver no local da reunião (até 100 m).
               </p>
             </div>
           </div>

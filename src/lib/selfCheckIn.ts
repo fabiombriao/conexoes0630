@@ -9,10 +9,18 @@ export type SelfCheckInStatus =
   | "low_accuracy"
   | "not_active"
   | "no_group"
-  | "invalid_location";
+  | "invalid_location"
+  | "outside_window";
+
+/** Motivo da recusa quando a confirmação é tentada fora da janela (terça, 06:30–09:00). */
+export type SelfCheckInWindowReason = "wrong_day" | "too_early" | "too_late";
+
+/** Texto fixo da janela de confirmação (a regra de verdade fica no servidor). */
+export const SELF_CHECKIN_WINDOW_LABEL = "terças-feiras, das 06:30 às 09:00";
 
 export interface SelfCheckInResult {
   status: SelfCheckInStatus;
+  reason?: SelfCheckInWindowReason | null;
   distance_m?: number | null;
   max_distance_m?: number | null;
   max_accuracy_m?: number | null;
@@ -33,6 +41,18 @@ export function todayInMeetingTimeZone(now: Date = new Date()): string {
 const formatMeters = (value: number | null | undefined) =>
   value == null ? "" : `${Math.round(value).toLocaleString("pt-BR")} m`;
 
+function describeOutsideWindow(reason?: SelfCheckInWindowReason | null): string {
+  switch (reason) {
+    case "too_early":
+      return "Ainda não abriu. Hoje a confirmação começa às 06:30.";
+    case "too_late":
+      return "A confirmação de hoje já encerrou (era até às 09:00).";
+    case "wrong_day":
+    default:
+      return `A confirmação de presença só é aceita às ${SELF_CHECKIN_WINDOW_LABEL}.`;
+  }
+}
+
 /** Texto amigável para cada resposta da RPC. */
 export function describeSelfCheckIn(result: SelfCheckInResult): { ok: boolean; message: string } {
   const max = formatMeters(result.max_distance_m ?? 100);
@@ -51,6 +71,8 @@ export function describeSelfCheckIn(result: SelfCheckInResult): { ok: boolean; m
         ok: false,
         message: `Não consegui determinar sua posição com precisão suficiente (até ${formatMeters(result.max_accuracy_m ?? 100)}). Ative o GPS/localização precisa, vá para um local aberto e tente de novo.`,
       };
+    case "outside_window":
+      return { ok: false, message: describeOutsideWindow(result.reason) };
     case "not_active":
       return { ok: false, message: "Somente membros ativos podem confirmar presença." };
     case "no_group":
