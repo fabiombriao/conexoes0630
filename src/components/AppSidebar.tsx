@@ -14,6 +14,7 @@ import {
   ClipboardList,
   ShieldCheck,
   FileText,
+  Lightbulb,
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
@@ -80,6 +81,7 @@ export function AppSidebar() {
     { title: "Gerenciar Admins", url: "/admin/manage", icon: ShieldCheck, show: isSuperAdmin },
     { title: "Solicitações Pendentes", url: "/admin/pending", icon: ShieldCheck, show: isSuperAdmin },
     { title: "Termo de compromisso", url: "/termo-compromisso", icon: FileText, show: isSuperAdmin },
+    { title: "Ideias", url: "/ideas", icon: Lightbulb, show: isSuperAdmin },
     { title: "Notificações", url: "/notifications", icon: Bell, show: true, badge: unreadCount },
     { title: "Meu Perfil", url: "/profile", icon: User, show: true },
   ];

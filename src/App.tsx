@@ -21,6 +21,7 @@ import AdminPendingPage from "@/pages/AdminPendingPage";
 import ManageAdminsPage from "@/pages/ManageAdminsPage";
 import AdminInvitationsPage from "@/pages/AdminInvitationsPage";
 import AdminSentInvitesPage from "@/pages/AdminSentInvitesPage";
+import IdeasPage from "@/pages/IdeasPage";
 import NotificationsPage from "@/pages/NotificationsPage";
 import ProfilePage from "@/pages/ProfilePage";
 import TermoCompromissoPage from "@/pages/TermoCompromissoPage";
@@ -70,6 +71,7 @@ const App = () => (
               <Route path="/admin/manage" element={<ManageAdminsPage />} />
               <Route path="/admin/invitations" element={<AdminInvitationsPage />} />
               <Route path="/admin/sent-invites" element={<AdminSentInvitesPage />} />
+              <Route path="/ideas" element={<IdeasPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/profile" element={<ProfilePage />} />
             </Route>

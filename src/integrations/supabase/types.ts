@@ -14,6 +14,448 @@ export type Database = {
   }
   public: {
     Tables: {
+      idea_attachments: {
+        Row: {
+          content_type: string | null
+          created_at: string
+          file_name: string
+          file_path: string
+          id: string
+          idea_id: string
+          note_id: string | null
+          size_bytes: number | null
+          task_id: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          content_type?: string | null
+          created_at?: string
+          file_name: string
+          file_path: string
+          id?: string
+          idea_id: string
+          note_id?: string | null
+          size_bytes?: number | null
+          task_id?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          content_type?: string | null
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          id?: string
+          idea_id?: string
+          note_id?: string | null
+          size_bytes?: number | null
+          task_id?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "idea_attachments_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "ideas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "idea_attachments_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "idea_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "idea_attachments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "idea_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "idea_attachments_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      idea_history: {
+        Row: {
+          from_stage_id: string | null
+          from_stage_name: string | null
+          id: string
+          idea_id: string
+          moved_at: string
+          moved_by: string | null
+          to_stage_id: string | null
+          to_stage_name: string | null
+        }
+        Insert: {
+          from_stage_id?: string | null
+          from_stage_name?: string | null
+          id?: string
+          idea_id: string
+          moved_at?: string
+          moved_by?: string | null
+          to_stage_id?: string | null
+          to_stage_name?: string | null
+        }
+        Update: {
+          from_stage_id?: string | null
+          from_stage_name?: string | null
+          id?: string
+          idea_id?: string
+          moved_at?: string
+          moved_by?: string | null
+          to_stage_id?: string | null
+          to_stage_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "idea_history_from_stage_id_fkey"
+            columns: ["from_stage_id"]
+            isOneToOne: false
+            referencedRelation: "idea_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "idea_history_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "ideas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "idea_history_moved_by_fkey"
+            columns: ["moved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "idea_history_to_stage_id_fkey"
+            columns: ["to_stage_id"]
+            isOneToOne: false
+            referencedRelation: "idea_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      idea_notes: {
+        Row: {
+          author_id: string | null
+          body: string
+          created_at: string
+          id: string
+          idea_id: string
+        }
+        Insert: {
+          author_id?: string | null
+          body: string
+          created_at?: string
+          id?: string
+          idea_id: string
+        }
+        Update: {
+          author_id?: string | null
+          body?: string
+          created_at?: string
+          id?: string
+          idea_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "idea_notes_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "idea_notes_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "ideas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      idea_stages: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          is_archived: boolean
+          is_final: boolean
+          name: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          is_archived?: boolean
+          is_final?: boolean
+          name: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          is_archived?: boolean
+          is_final?: boolean
+          name?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+
+        ]
+      }
+      idea_tag_links: {
+        Row: {
+          idea_id: string
+          tag_id: string
+        }
+        Insert: {
+          idea_id: string
+          tag_id: string
+        }
+        Update: {
+          idea_id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "idea_tag_links_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "ideas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "idea_tag_links_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "idea_tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      idea_tags: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: [
+
+        ]
+      }
+      idea_tasks: {
+        Row: {
+          assignee_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          done_at: string | null
+          due_date: string | null
+          id: string
+          idea_id: string
+          is_done: boolean
+          position: number
+          title: string
+        }
+        Insert: {
+          assignee_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          done_at?: string | null
+          due_date?: string | null
+          id?: string
+          idea_id: string
+          is_done?: boolean
+          position?: number
+          title: string
+        }
+        Update: {
+          assignee_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          done_at?: string | null
+          due_date?: string | null
+          id?: string
+          idea_id?: string
+          is_done?: boolean
+          position?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "idea_tasks_assignee_id_fkey"
+            columns: ["assignee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "idea_tasks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "idea_tasks_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "ideas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      idea_values: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          idea_id: string
+          kind: string
+          label: string | null
+          nature: string
+          period: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          idea_id: string
+          kind: string
+          label?: string | null
+          nature: string
+          period?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          idea_id?: string
+          kind?: string
+          label?: string | null
+          nature?: string
+          period?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "idea_values_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "ideas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ideas: {
+        Row: {
+          assignee_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          origin: string
+          position: number
+          priority: string
+          stage_id: string
+          suggested_by_member_id: string | null
+          suggested_by_name: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assignee_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          origin?: string
+          position?: number
+          priority?: string
+          stage_id: string
+          suggested_by_member_id?: string | null
+          suggested_by_name?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assignee_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          origin?: string
+          position?: number
+          priority?: string
+          stage_id?: string
+          suggested_by_member_id?: string | null
+          suggested_by_name?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ideas_assignee_id_fkey"
+            columns: ["assignee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ideas_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ideas_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "idea_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ideas_suggested_by_member_id_fkey"
+            columns: ["suggested_by_member_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       attendance_records: {
         Row: {
           id: string
@@ -1009,6 +1451,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      delete_idea_stage: {
+        Args: { _stage_id: string; _move_to?: string | null }
+        Returns: undefined
+      }
+      reorder_idea_stages: {
+        Args: { _ids: string[] }
+        Returns: undefined
+      }
       confirm_self_attendance: {
         Args: {
           _accuracy?: number | null
