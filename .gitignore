@@ -34,3 +34,6 @@ dev_output.log
 *.njsproj
 *.sln
 *.sw?
+
+# TS incremental build info
+*.tsbuildinfo
