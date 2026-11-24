@@ -243,7 +243,7 @@ const AdminSentInvitesPage: React.FC = () => {
           </div>
 
           {totalPages > 1 && (
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-sm text-muted-foreground">
                 {filtered.length} resultado{filtered.length !== 1 && "s"} — Página {page + 1} de {totalPages}
               </span>

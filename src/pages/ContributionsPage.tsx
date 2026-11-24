@@ -463,7 +463,7 @@ const ContributionsPage: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-display font-bold">Minhas TRN's</h1>
         <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) { setSelectedType(null); setFormData({}); setSelectedTopics([]); } }}>
           <DialogTrigger asChild>
@@ -850,7 +850,7 @@ const ContributionsPage: React.FC = () => {
                 }
               }}
             >
-              <CardContent className="p-4 flex items-center justify-between">
+              <CardContent className="p-4 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <span className="text-xs font-bold uppercase text-primary bg-primary/10 px-2 py-1 rounded">
                     {TYPE_LABELS[c.type as ContributionType] || c.type}

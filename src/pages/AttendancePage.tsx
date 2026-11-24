@@ -341,7 +341,7 @@ const AttendancePage: React.FC = () => {
             ⚠️ MODO TESTE — Nenhum dado será salvo
           </div>
         )}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-display font-bold">
             {openMode === "members"
               ? isTest
@@ -572,7 +572,7 @@ const AttendancePage: React.FC = () => {
         ) : (
           combinedSessions.map((s: any) => (
             <Card key={`${s._kind}-${s.id}`} className="bg-card border-border">
-              <CardContent className="p-4 flex items-center justify-between">
+              <CardContent className="p-4 flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="font-medium">
                     {s._kind === "guests" ? "🎟️" : "📋"} Lista de Presença ({s._kind === "guests" ? "Convidados" : "Membros"}) —{" "}

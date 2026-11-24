@@ -128,7 +128,7 @@ const ProfilePage: React.FC = () => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-3xl">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-display font-bold">Meu Perfil</h1>
         <Button type="submit" disabled={updateMutation.isPending} className="font-bold uppercase tracking-wider">
           <Save className="h-4 w-4 mr-2" />

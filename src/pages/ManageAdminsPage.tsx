@@ -259,7 +259,7 @@ export default function ManageAdminsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <ShieldCheck className="h-7 w-7 text-primary" />
           <h1 className="text-2xl font-display font-bold text-foreground">Gerenciar Admins</h1>
@@ -280,7 +280,7 @@ export default function ManageAdminsPage() {
           <h2 className="text-lg font-semibold text-foreground">Super Admins</h2>
           <div className="grid gap-3">
             {superAdmins.map((sa) => (
-              <div key={sa.id} className="flex items-center justify-between rounded-xl border border-primary/30 bg-primary/5 p-4">
+              <div key={sa.id} className="flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4">
                 <div className="space-y-1">
                   <p className="font-semibold text-foreground">{sa.full_name || "Sem nome"}</p>
                   <Badge className="bg-primary/20 text-primary border-primary/30 text-xs">Super Admin</Badge>
@@ -305,10 +305,10 @@ export default function ManageAdminsPage() {
           {admins.map((admin) => (
             <div
               key={admin.id}
-              className="flex items-center justify-between rounded-xl border border-border bg-card p-4 cursor-pointer hover:border-primary/50 transition-colors"
+              className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-4 cursor-pointer hover:border-primary/50 transition-colors"
               onClick={() => openEdit(admin)}
             >
-              <div className="space-y-1">
+              <div className="min-w-0 space-y-1">
                 <p className="font-semibold text-foreground">{admin.full_name || "Sem nome"}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {activePerms(admin.admin_permissions).length > 0 ? (
