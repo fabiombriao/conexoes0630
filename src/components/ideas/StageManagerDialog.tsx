@@ -4,6 +4,7 @@ import { Archive, ArchiveRestore, ArrowDown, ArrowUp, Flag, Plus, Trash2 } from 
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { IDEA_KEYS } from "@/hooks/useIdeas";
+import { usePermissions } from "@/hooks/usePermissions";
 import type { IdeaRow, IdeaStage } from "@/lib/ideas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +34,8 @@ const StageRow: React.FC<{
   total: number;
   ideaCount: number;
   onMove: (dir: -1 | 1) => void;
-  onDelete: () => void;
+  /** só o Super Admin recebe; sem ele o botão não aparece */
+  onDelete?: () => void;
   onChanged: () => void;
 }> = ({ stage, index, total, ideaCount, onMove, onDelete, onChanged }) => {
   const [name, setName] = useState(stage.name);
@@ -124,15 +126,17 @@ const StageRow: React.FC<{
             </>
           )}
         </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          className="ml-auto h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
-          onClick={onDelete}
-        >
-          <Trash2 className="mr-1 h-3.5 w-3.5" /> Excluir
-        </Button>
+        {onDelete && (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="ml-auto h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
+            onClick={onDelete}
+          >
+            <Trash2 className="mr-1 h-3.5 w-3.5" /> Excluir
+          </Button>
+        )}
       </div>
     </li>
   );
@@ -145,6 +149,7 @@ export const StageManagerDialog: React.FC<{
   ideas: IdeaRow[];
 }> = ({ open, onClose, stages, ideas }) => {
   const qc = useQueryClient();
+  const { isSuperAdmin } = usePermissions();
   const [newName, setNewName] = useState("");
   const [toDelete, setToDelete] = useState<IdeaStage | null>(null);
   const [destination, setDestination] = useState<string>("");
@@ -243,7 +248,7 @@ export const StageManagerDialog: React.FC<{
                 total={stages.length}
                 ideaCount={countIn(s.id)}
                 onMove={(dir) => move(i, dir)}
-                onDelete={() => askDelete(s)}
+                onDelete={isSuperAdmin ? () => askDelete(s) : undefined}
                 onChanged={refresh}
               />
             ))}

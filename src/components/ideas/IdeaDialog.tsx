@@ -4,6 +4,7 @@ import { ArrowRight, Tags, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { IDEA_KEYS, useIdeaDetail, useIdeaList, type IdeaPerson } from "@/hooks/useIdeas";
+import { usePermissions } from "@/hooks/usePermissions";
 import { removeStorageFiles } from "@/lib/ideaAttachments";
 import {
   ORIGIN_LABELS,
@@ -48,6 +49,7 @@ const formatDateTime = (iso: string) =>
 
 export const IdeaDialog: React.FC<Props> = ({ ideaId, stages, tags, people, onClose, onManageTags }) => {
   const qc = useQueryClient();
+  const { isSuperAdmin } = usePermissions();
   const { data: ideas } = useIdeaList(true);
   const idea = ideas?.find((i) => i.id === ideaId);
   const detail = useIdeaDetail(ideaId);
@@ -98,9 +100,12 @@ export const IdeaDialog: React.FC<Props> = ({ ideaId, stages, tags, people, onCl
 
   const remove = useMutation({
     mutationFn: async () => {
-      await removeStorageFiles((detail.data?.attachments ?? []).map((a) => a.file_path));
-      const { error } = await supabase.from("ideas").delete().eq("id", ideaId);
+      const paths = (detail.data?.attachments ?? []).map((a) => a.file_path);
+      // a RLS não devolve erro quando barra um delete: só apaga os arquivos se a linha saiu
+      const { data, error } = await supabase.from("ideas").delete().eq("id", ideaId).select("id");
       if (error) throw error;
+      if (!data?.length) throw new Error("Exclusão não permitida.");
+      await removeStorageFiles(paths);
     },
     onSuccess: () => {
       toast.success("Ideia excluída.");
@@ -376,22 +381,26 @@ export const IdeaDialog: React.FC<Props> = ({ ideaId, stages, tags, people, onCl
                   {d.history.length === 0 && <li>Sem movimentações registradas.</li>}
                 </ul>
               </section>
-              <hr className="border-border" />
-              <div className="flex justify-end">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="text-muted-foreground hover:text-destructive"
-                  disabled={remove.isPending}
-                  onClick={() => {
-                    if (window.confirm(`Excluir a ideia "${idea.title}" com tarefas, valores, observações e anexos? Não dá para desfazer.`))
-                      remove.mutate();
-                  }}
-                >
-                  <Trash2 className="mr-1.5 h-4 w-4" /> Excluir ideia
-                </Button>
-              </div>
+              {isSuperAdmin && (
+                <>
+                  <hr className="border-border" />
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground hover:text-destructive"
+                      disabled={remove.isPending}
+                      onClick={() => {
+                        if (window.confirm(`Excluir a ideia "${idea.title}" com tarefas, valores, observações e anexos? Não dá para desfazer.`))
+                          remove.mutate();
+                      }}
+                    >
+                      <Trash2 className="mr-1.5 h-4 w-4" /> Excluir ideia
+                    </Button>
+                  </div>
+                </>
+              )}
             </>
           )}
         </div>

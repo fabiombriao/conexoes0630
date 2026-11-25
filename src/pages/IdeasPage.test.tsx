@@ -41,7 +41,10 @@ vi.mock("@/integrations/supabase/client", () => {
   };
   return { supabase: { from: builder, rpc: (name: string) => Promise.resolve({ data: name === "get_idea_team" ? [{ user_id: ADMIN }] : null, error: null }), storage: { from: () => ({}) } } };
 });
-vi.mock("@/hooks/usePermissions", () => ({ usePermissions: () => ({ canAccessIdeas: true, isPermissionsLoading: false }) }));
+const perms = vi.hoisted(() => ({ isSuperAdmin: false }));
+vi.mock("@/hooks/usePermissions", () => ({
+  usePermissions: () => ({ canAccessIdeas: true, isSuperAdmin: perms.isSuperAdmin, isPermissionsLoading: false }),
+}));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { id: ADMIN } }) }));
 
 import IdeasPage from "@/pages/IdeasPage";
@@ -72,6 +75,17 @@ describe("IdeasPage", () => {
     expect(screen.getByLabelText("Título da ideia")).toHaveValue("Cobrar mensalidade pelo app");
     expect(screen.getByText("Histórico de movimentação")).toBeInTheDocument();
     expect(screen.getByText("Saldo recorrente:", { exact: false })).toBeInTheDocument();
+  });
+
+  it.each([
+    ["Super Admin vê", true],
+    ["Comissão não vê", false],
+  ])("%s o botão de excluir ideia", async (_quem, isSuperAdmin) => {
+    perms.isSuperAdmin = isSuperAdmin;
+    renderPage();
+    fireEvent.click(await screen.findByText("Cobrar mensalidade pelo app"));
+    await screen.findByText("Histórico de movimentação");
+    expect(!!screen.queryByRole("button", { name: "Excluir ideia" })).toBe(isSuperAdmin);
   });
 
   it("ocultar finalizadas esconde ideias de etapa final", async () => {
