@@ -62,9 +62,9 @@ import { TagManagerDialog } from "@/components/ideas/TagManagerDialog";
 type Columns = Record<string, string[]>;
 
 const IdeasPage: React.FC = () => {
-  const { isSuperAdmin, isPermissionsLoading } = usePermissions();
+  const { canAccessIdeas, isPermissionsLoading } = usePermissions();
   const qc = useQueryClient();
-  const enabled = isSuperAdmin;
+  const enabled = canAccessIdeas;
 
   const stagesQ = useIdeaStages(enabled);
   const tagsQ = useIdeaTags(enabled);
@@ -261,7 +261,7 @@ const IdeasPage: React.FC = () => {
       </div>
     );
   }
-  if (!isSuperAdmin) return <Navigate to="/" replace />;
+  if (!canAccessIdeas) return <Navigate to="/" replace />;
 
   const isLoading = stagesQ.isLoading || ideasQ.isLoading;
   const loadError = stagesQ.error || ideasQ.error;
@@ -313,7 +313,7 @@ const IdeasPage: React.FC = () => {
           <SelectContent>
             <SelectItem value="all">Todos os responsáveis</SelectItem>
             <SelectItem value="none">Sem responsável</SelectItem>
-            {people.superAdmins.map((p) => (
+            {people.assignees.map((p) => (
               <SelectItem key={p.id} value={p.id}>
                 {p.full_name}
               </SelectItem>

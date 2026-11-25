@@ -20,10 +20,10 @@ const NONE = "none";
 const TaskRow: React.FC<{
   task: IdeaTask;
   attachments: IdeaAttachment[];
-  superAdmins: IdeaPerson[];
+  assignees: IdeaPerson[];
   nameOf: (id: string | null | undefined) => string;
   onChanged: () => void;
-}> = ({ task, attachments, superAdmins, nameOf, onChanged }) => {
+}> = ({ task, attachments, assignees, nameOf, onChanged }) => {
   const [expanded, setExpanded] = useState(false);
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description ?? "");
@@ -124,7 +124,7 @@ const TaskRow: React.FC<{
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NONE}>Sem responsável</SelectItem>
-                  {superAdmins.map((p) => (
+                  {assignees.map((p) => (
                     <SelectItem key={p.id} value={p.id}>
                       {p.full_name}
                     </SelectItem>
@@ -169,9 +169,9 @@ export const IdeaTasksSection: React.FC<{
   ideaId: string;
   tasks: IdeaTask[];
   attachments: IdeaAttachment[];
-  superAdmins: IdeaPerson[];
+  assignees: IdeaPerson[];
   nameOf: (id: string | null | undefined) => string;
-}> = ({ ideaId, tasks, attachments, superAdmins, nameOf }) => {
+}> = ({ ideaId, tasks, attachments, assignees, nameOf }) => {
   const qc = useQueryClient();
   const [newTitle, setNewTitle] = useState("");
   const refresh = () => qc.invalidateQueries({ queryKey: IDEA_KEYS.root });
@@ -211,7 +211,7 @@ export const IdeaTasksSection: React.FC<{
               key={t.id}
               task={t}
               attachments={attachments.filter((a) => a.task_id === t.id)}
-              superAdmins={superAdmins}
+              assignees={assignees}
               nameOf={nameOf}
               onChanged={refresh}
             />

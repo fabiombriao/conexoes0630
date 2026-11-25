@@ -49,7 +49,7 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const { signOut, user } = useAuth();
   const location = useLocation();
-  const { isSuperAdmin, can } = usePermissions();
+  const { isSuperAdmin, canAccessIdeas, can } = usePermissions();
 
   const { data: unreadCount = 0 } = useQuery({
     queryKey: ["unread-notifications-count", user?.id],
@@ -81,7 +81,7 @@ export function AppSidebar() {
     { title: "Gerenciar Admins", url: "/admin/manage", icon: ShieldCheck, show: isSuperAdmin },
     { title: "Solicitações Pendentes", url: "/admin/pending", icon: ShieldCheck, show: isSuperAdmin },
     { title: "Termo de compromisso", url: "/termo-compromisso", icon: FileText, show: isSuperAdmin },
-    { title: "Ideias", url: "/ideas", icon: Lightbulb, show: isSuperAdmin },
+    { title: "Ideias", url: "/ideas", icon: Lightbulb, show: canAccessIdeas },
     { title: "Notificações", url: "/notifications", icon: Bell, show: true, badge: unreadCount },
     { title: "Meu Perfil", url: "/profile", icon: User, show: true },
   ];

@@ -29,7 +29,6 @@ const tables: Record<string, unknown[]> = {
   idea_attachments: [],
   idea_history: [{ id: "h1", idea_id: "i1", from_stage_id: null, from_stage_name: null, to_stage_id: "s1", to_stage_name: "Nova ideia", moved_by: ADMIN, moved_at: now }],
   profiles: [{ id: ADMIN, full_name: "Fábio Briao", status: "active" }],
-  user_roles: [{ user_id: ADMIN }],
 };
 
 vi.mock("@/integrations/supabase/client", () => {
@@ -40,9 +39,9 @@ vi.mock("@/integrations/supabase/client", () => {
     b.then = (res: (v: unknown) => unknown, rej: (e: unknown) => unknown) => result().then(res, rej);
     return b;
   };
-  return { supabase: { from: builder, rpc: () => Promise.resolve({ error: null }), storage: { from: () => ({}) } } };
+  return { supabase: { from: builder, rpc: (name: string) => Promise.resolve({ data: name === "get_idea_team" ? [{ user_id: ADMIN }] : null, error: null }), storage: { from: () => ({}) } } };
 });
-vi.mock("@/hooks/usePermissions", () => ({ usePermissions: () => ({ isSuperAdmin: true, isPermissionsLoading: false }) }));
+vi.mock("@/hooks/usePermissions", () => ({ usePermissions: () => ({ canAccessIdeas: true, isPermissionsLoading: false }) }));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { id: ADMIN } }) }));
 
 import IdeasPage from "@/pages/IdeasPage";

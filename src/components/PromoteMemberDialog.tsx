@@ -56,12 +56,20 @@ export const PromoteMemberDialog: React.FC<Props> = ({ open, onOpenChange, membe
 
   const promoteMutation = useMutation({
     mutationFn: async () => {
-      // Update role
+      // Troca o cargo sem mexer na linha 'committee' (a pessoa pode ter as duas):
+      // primeiro grava o novo cargo, depois remove os cargos antigos
       const { error: roleErr } = await supabase
         .from("user_roles")
-        .update({ role: targetRole })
-        .eq("user_id", memberId);
+        .upsert({ user_id: memberId, role: targetRole }, { onConflict: "user_id,role", ignoreDuplicates: true });
       if (roleErr) throw roleErr;
+
+      const oldRoles = (["member", "group_leader", "admin"] as const).filter((r) => r !== targetRole);
+      const { error: cleanErr } = await supabase
+        .from("user_roles")
+        .delete()
+        .eq("user_id", memberId)
+        .in("role", oldRoles);
+      if (cleanErr) throw cleanErr;
 
       // Update profile permissions
       const { error: profErr } = await supabase

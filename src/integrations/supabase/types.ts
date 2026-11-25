@@ -1459,6 +1459,14 @@ export type Database = {
         Args: { _ids: string[] }
         Returns: undefined
       }
+      can_access_ideas: {
+        Args: never
+        Returns: boolean
+      }
+      get_idea_team: {
+        Args: never
+        Returns: { user_id: string }[]
+      }
       confirm_self_attendance: {
         Args: {
           _accuracy?: number | null
@@ -1559,7 +1567,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "member" | "group_leader" | "admin"
+      app_role: "member" | "group_leader" | "admin" | "committee"
       attendance_record_status: "present" | "absent" | "substituted"
       attendance_session_status:
         | "test"
@@ -1718,7 +1726,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["member", "group_leader", "admin"],
+      app_role: ["member", "group_leader", "admin", "committee"],
       attendance_record_status: ["present", "absent", "substituted"],
       attendance_session_status: [
         "test",

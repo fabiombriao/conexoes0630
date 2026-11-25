@@ -36,7 +36,7 @@ interface Props {
   tags: IdeaTag[];
   people: {
     members: IdeaPerson[];
-    superAdmins: IdeaPerson[];
+    assignees: IdeaPerson[];
     nameOf: (id: string | null | undefined) => string;
   };
   onClose: () => void;
@@ -184,7 +184,7 @@ export const IdeaDialog: React.FC<Props> = ({ ideaId, stages, tags, people, onCl
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={NONE}>Sem responsável</SelectItem>
-                    {people.superAdmins.map((p) => (
+                    {people.assignees.map((p) => (
                       <SelectItem key={p.id} value={p.id}>
                         {p.full_name}
                       </SelectItem>
@@ -343,7 +343,7 @@ export const IdeaDialog: React.FC<Props> = ({ ideaId, stages, tags, people, onCl
                 ideaId={ideaId}
                 tasks={d.tasks}
                 attachments={d.attachments}
-                superAdmins={people.superAdmins}
+                assignees={people.assignees}
                 nameOf={people.nameOf}
               />
               <hr className="border-border" />

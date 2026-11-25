@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,7 +12,7 @@ import {
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Users, Search, ShieldCheck, Ban } from "lucide-react";
+import { Users, Search, ShieldCheck, Ban, UsersRound, UserMinus } from "lucide-react";
 import { PromoteMemberDialog } from "@/components/PromoteMemberDialog";
 import { SuspendMemberDialog } from "@/components/SuspendMemberDialog";
 
@@ -21,6 +22,47 @@ const MembersPage: React.FC = () => {
   const [promoteTarget, setPromoteTarget] = useState<any>(null);
   const [suspendTarget, setSuspendTarget] = useState<any>(null);
   const { isSuperAdmin } = usePermissions();
+  const queryClient = useQueryClient();
+
+  // Quem é da Comissão. Só o Super Admin consegue ler os papéis de outras pessoas.
+  const { data: committeeIds, isLoading: isCommitteeLoading } = useQuery({
+    queryKey: ["committee-members"],
+    enabled: isSuperAdmin,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("user_roles").select("user_id").eq("role", "committee");
+      if (error) throw error;
+      return (data ?? []).map((r) => r.user_id);
+    },
+  });
+  const isInCommittee = (id: string) => !!committeeIds?.includes(id);
+
+  const committeeMutation = useMutation({
+    mutationFn: async ({ id, add }: { id: string; name: string; add: boolean }) => {
+      if (add) {
+        // Linha extra: o cargo atual (membro/admin) continua igual
+        const { error } = await supabase
+          .from("user_roles")
+          .upsert({ user_id: id, role: "committee" }, { onConflict: "user_id,role", ignoreDuplicates: true });
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase
+          .from("user_roles")
+          .delete()
+          .eq("user_id", id)
+          .eq("role", "committee")
+          .select("id");
+        if (error) throw error;
+        if (!data?.length) throw new Error("Não foi possível remover da Comissão.");
+      }
+    },
+    onSuccess: async (_, { name, add }) => {
+      toast.success(add ? `${name} agora faz parte da Comissão!` : `${name} saiu da Comissão.`);
+      await queryClient.invalidateQueries({ queryKey: ["committee-members"] });
+      queryClient.invalidateQueries({ queryKey: ["user-roles"] });
+      queryClient.invalidateQueries({ queryKey: ["ideas", "people"] });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
 
   const { data: members, isLoading } = useQuery({
     queryKey: ["members-list"],
@@ -91,6 +133,7 @@ const MembersPage: React.FC = () => {
                     <p className="font-medium truncate">{m.full_name || "Membro"}</p>
                     <p className="text-sm text-muted-foreground truncate">{m.professional_title}</p>
                     <p className="text-xs text-muted-foreground truncate">{m.company_name}</p>
+                    {isSuperAdmin && isInCommittee(m.id) && <CommitteeBadge className="mt-1" />}
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     {m.whatsapp && (
@@ -134,6 +177,30 @@ const MembersPage: React.FC = () => {
               <MemberProfile profile={selectedMember} />
               {isSuperAdmin && (
                 <div className="px-6 pb-6 space-y-2">
+                  {isInCommittee(selectedMember.id) && (
+                    <div className="flex justify-center pb-1">
+                      <CommitteeBadge />
+                    </div>
+                  )}
+                  <Button
+                    onClick={() =>
+                      committeeMutation.mutate({
+                        id: selectedMember.id,
+                        name: selectedMember.full_name?.trim() || "Membro",
+                        add: !isInCommittee(selectedMember.id),
+                      })
+                    }
+                    disabled={isCommitteeLoading || committeeMutation.isPending}
+                    variant="outline"
+                    className="w-full border-primary text-primary hover:bg-primary/10 gap-2"
+                  >
+                    {isInCommittee(selectedMember.id) ? <UserMinus className="h-4 w-4" /> : <UsersRound className="h-4 w-4" />}
+                    {committeeMutation.isPending
+                      ? "Salvando..."
+                      : isInCommittee(selectedMember.id)
+                      ? "Remover da Comissão"
+                      : "Promover à Comissão"}
+                  </Button>
                   <Button
                     onClick={() => { setSelectedMember(null); setPromoteTarget(selectedMember); }}
                     variant="outline"
@@ -178,6 +245,12 @@ const MembersPage: React.FC = () => {
     </div>
   );
 };
+
+const CommitteeBadge: React.FC<{ className?: string }> = ({ className = "" }) => (
+  <span className={`inline-flex items-center gap-1 text-xs bg-accent/15 text-accent border border-accent/30 px-2 py-0.5 rounded-full font-medium ${className}`}>
+    <UsersRound className="h-3 w-3" /> Comissão
+  </span>
+);
 
 const MemberProfile: React.FC<{ profile: any }> = ({ profile }) => {
   const gainsFields = [

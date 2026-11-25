@@ -82,6 +82,8 @@ export function usePermissions() {
   const isSuperAdmin = roleList.includes("admin"); // 'admin' in DB = superadmin in UI
   const isGroupLeader = roleList.includes("group_leader"); // group_leader in DB = admin in UI
   const isMember = roleList.includes("member");
+  // 'committee' (Comissão) é uma linha extra: a pessoa continua com o papel de membro
+  const isCommittee = roleList.includes("committee");
 
   const userRole: UserRole = isSuperAdmin
     ? "superadmin"
@@ -96,6 +98,8 @@ export function usePermissions() {
   const isPermissionsLoading = !!user && (isProfileLoading || isRolesLoading);
   const accountStatus = profile?.status ?? "pending";
   const isActive = accountStatus === "active";
+  // Mesma regra da função can_access_ideas() no banco
+  const canAccessIdeas = isSuperAdmin || (isCommittee && isActive);
 
   const can = (permission: keyof AdminPermissions): boolean => {
     if (isSuperAdmin) return true;
@@ -108,6 +112,8 @@ export function usePermissions() {
     isSuperAdmin,
     isAdmin: isGroupLeader,
     isMember,
+    isCommittee,
+    canAccessIdeas,
     isPermissionsLoading,
     isActive,
     accountStatus,

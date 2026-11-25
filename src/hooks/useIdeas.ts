@@ -134,28 +134,29 @@ export interface IdeaPerson {
   full_name: string;
 }
 
-/** Perfis (para nomes de autor/responsável/sugestão) e Super Admins (possíveis responsáveis). */
+/** Perfis (para nomes de autor/responsável/sugestão) e a equipe do quadro: Super Admins + Comissão. */
 export function useIdeaPeople(enabled: boolean) {
   const query = useQuery({
     queryKey: IDEA_KEYS.people,
     enabled,
     queryFn: async () => {
-      const [{ data: profiles, error: pErr }, { data: roles, error: rErr }] = await Promise.all([
+      const [{ data: profiles, error: pErr }, { data: team, error: tErr }] = await Promise.all([
         supabase.from("profiles").select("id, full_name, status"),
-        supabase.from("user_roles").select("user_id").eq("role", "admin"),
+        // RPC porque a Comissão não enxerga as linhas de outras pessoas em user_roles
+        supabase.rpc("get_idea_team"),
       ]);
       if (pErr) throw pErr;
-      if (rErr) throw rErr;
+      if (tErr) throw tErr;
       return {
         profiles: (profiles ?? []) as { id: string; full_name: string | null; status: string }[],
-        adminIds: new Set((roles ?? []).map((r) => r.user_id)),
+        teamIds: new Set((team ?? []).map((r) => r.user_id)),
       };
     },
   });
 
   return useMemo(() => {
     const profiles = query.data?.profiles ?? [];
-    const adminIds = query.data?.adminIds ?? new Set<string>();
+    const teamIds = query.data?.teamIds ?? new Set<string>();
     const toPerson = (p: { id: string; full_name: string | null }): IdeaPerson => ({
       id: p.id,
       full_name: p.full_name?.trim() || "Sem nome",
@@ -164,7 +165,7 @@ export function useIdeaPeople(enabled: boolean) {
     return {
       isLoading: query.isLoading,
       members: sortByText(profiles.filter((p) => p.status === "active").map(toPerson), (p) => p.full_name),
-      superAdmins: sortByText(profiles.filter((p) => adminIds.has(p.id)).map(toPerson), (p) => p.full_name),
+      assignees: sortByText(profiles.filter((p) => teamIds.has(p.id)).map(toPerson), (p) => p.full_name),
       nameOf: (id: string | null | undefined) => (id ? names.get(id) ?? "—" : ""),
     };
   }, [query.data, query.isLoading]);
